@@ -73,7 +73,7 @@ def login():
 		form.name.data = ''
 		password = form.password.data
 		form.password.data = ''
-#form.logintype?
+
 		print(name,password)
 
 	return render_template('login.html', name=name, password=password, form=form)
