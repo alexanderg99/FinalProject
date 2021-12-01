@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<table class="table table-striped">
+    <thead>
+                    <tr>
+                    <th>Airline Name</th>
+                    <th>Flight Num</th>
+                    <th>Departure Airport</th>
+                    <th>Departure Time</th>
+                        <th>Arrival Airport</th>
+                        <th>Arrival Time</th>
+                        <th>Price</th>
+                        <th>Upcoming</th>
+                        <th>Airplane ID</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    {% for row in data %}
+                    <tr>
+                    <td>{{row['airline_name']}}</td>
+                    <td>{{row['flight_num']}}</td>
+                    <td>{{row['departure_airport']}}</td>
+                    <td>{{row['departure_time']}}</td>
+                    <td>{{row['arrival_airport']}}</td>
+                        <td>{{row['arrival_time']}}</td>
+                        <td>{{row['price']}}</td>
+                        <td>{{row['status']}}</td>
+                        <td>{{row['airplane_id']}}</td>
+                    <td style="word-break:break-all; width: 200px;"><p style="word-wrap: break-word;  word-wrap: break-word; width: 200px;">{{row[5]}}</p></td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+        </table>
+
+
+{% endblock %}

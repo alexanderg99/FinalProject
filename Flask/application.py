@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, flash, redirect, url_for
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired
+import re
+
 from forms import MusicSearchForm
 
 from flaskext.mysql import MySQL
@@ -10,6 +12,8 @@ import mysql.connector
 
 
 
+
+userPrimaryKey = None
 
 
 
@@ -83,9 +87,6 @@ def login():
 @app.route('/registers',  methods=['GET', 'POST'])
 def registers():
 
-	
-	
-
 	if request.method == 'POST':
 
 
@@ -103,20 +104,7 @@ def registers():
 			return redirect(url_for('register_staff'))
 
 
-
-
-
-
-
-
 		print(registerType)
-
-
-
-
-
-
-		
 
 	return render_template('register.html')
 
@@ -128,14 +116,24 @@ def register_agent():
 		password2 = request.form.get('password2')
 
 		agentID = request.form.get('agentID')
-
-		sql = '''INSERT INTO booking_agent VALUES ('{}','{}','{}')'''.format(email, password1, agentID)
 		with cnx.cursor() as cur:
-			cur.execute(sql)
+			query = "SELECT * FROM booking_agent WHERE email = '{}'".format(email)
 
-		cnx.commit()
+			cur.execute(query)
+			data = cur.fetchone()
 
-		return redirect(url_for('register_success'))
+			if (data):
+				error = "This user already exists!"
+				return render_template('register_customer.html', error=error)
+
+			else:
+				sql = '''INSERT INTO booking_agent VALUES ('{}','{}','{}')'''.format(email, password1, agentID)
+				with cnx.cursor() as cur:
+					cur.execute(sql)
+
+				cnx.commit()
+
+				return redirect(url_for('register_success'))
 
 	return render_template('register_agent.html')
 
@@ -152,18 +150,31 @@ def register_staff():
 		dob = request.form.get('Date of Birth')
 		agentID = request.form.get('agentID')
 
-		sql = '''INSERT INTO airline_staff VALUES ('{}','{}','{}','{}','{}','{}')'''.format(username,password1,first_name,last_name,dob,airlineName)
 		with cnx.cursor() as cur:
-			cur.execute(sql)
+			query = "SELECT * FROM airline_staff WHERE username = '{}'".format(username)
 
-		cnx.commit()
+			cur.execute(query)
+			data = cur.fetchone()
 
-		return redirect(url_for('register_success'))
+			if (data):
+				error = "This user already exists!"
+				return render_template('register_staff.html', error = error)
+			else:
+
+				sql = '''INSERT INTO airline_staff VALUES ('{}','{}','{}','{}','{}','{}')'''.format(username,password1,first_name,last_name,dob,airlineName)
+				with cnx.cursor() as cur:
+					cur.execute(sql)
+
+				cnx.commit()
+
+				return redirect(url_for('register_success'))
 
 	return render_template('register_staff.html')
 
 @app.route('/register_customer',  methods = ['GET','POST'])
 def register_customer():
+
+
 
 	if request.method == 'POST':
 		email = request.form.get('email')
@@ -180,20 +191,32 @@ def register_customer():
 		passportCountry = street = request.form.get('Street')
 		dob = request.form.get('Date of Birth')
 
-		sql = '''INSERT INTO customer VALUES ('{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}')'''.format(email, first_name,
-																							 password1, buildingNumber,
-																							 street, city, state,
-																							 phoneNumber,
-																							 passportNumber,
-																							 passportExpiration,
-																							 passportCountry, dob)
-
 		with cnx.cursor() as cur:
-			cur.execute(sql)
+			query = "SELECT * FROM customer WHERE email = '{}'".format(email)
 
-		cnx.commit()
+			cur.execute(query)
+			data = cur.fetchone()
 
-		return redirect(url_for('register_success'))
+			if (data):
+				error = "This user already exists!"
+				return render_template('register_customer.html', error=error)
+			else:
+
+				sql = '''INSERT INTO customer VALUES ('{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}')'''.format(email, first_name,
+																									 password1, buildingNumber,
+																									 street, city, state,
+																									 phoneNumber,
+																									 passportNumber,
+																									 passportExpiration,
+																			 passportCountry, dob)
+
+
+				with cnx.cursor() as cur:
+					cur.execute(sql)
+
+				cnx.commit()
+
+				return redirect(url_for('register_success'))
 
 	return render_template('register_customer.html')
 
@@ -211,10 +234,51 @@ def search():
 
 @app.route('/view_public_info', methods=['GET', 'POST'])
 def view_public_info():
-
-
-
 	pass
+
+
+@app.route('/customer_home')
+def customer_home():
+
+	global userPrimaryKey
+	userPrimaryKey = 'John Roberts'
+	return render_template('customer_home.html', name='John Roberts')
+
+
+@app.route('/customer_purchasetickets')
+def customer_purchasetickets():
+	user = userPrimaryKey
+	with cnx.cursor() as cur:
+		query = "SELECT * FROM flight WHERE status = 'Upcoming'"
+		cur.execute(query)
+		data = cur.fetchall()
+		print(type(data))
+		print(data)
+	return render_template('customer_purchasetickets.html', user=userPrimaryKey)
+
+@app.route('/customer_searchforflights')
+def customer_searchforflights():
+	user = userPrimaryKey
+	with cnx.cursor() as cur:
+		query = "SELECT * FROM flight WHERE status = 'Upcoming'"
+		cur.execute(query)
+		data = cur.fetchall()
+
+		print(type(data))
+		print(data)
+	return render_template('customer_searchforflights.html', data=data)
+
+@app.route('/customer_trackmyspending')
+def customer_trackmyspending():
+	user = userPrimaryKey
+
+	return render_template('customer_trackmyspending.html', user=userPrimaryKey)
+
+
+@app.route('/customer_viewmyflights')
+def customer_viewmyflights():
+	user = userPrimaryKey
+	return render_template('customer_viewmyflights.html', user=userPrimaryKey)
 
 
 if __name__ == '__main__':
