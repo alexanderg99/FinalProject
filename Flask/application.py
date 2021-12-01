@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, flash
+from flask import Flask, render_template, request, flash, redirect, url_for
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired
@@ -40,6 +40,7 @@ cnx = pymysql.connect(
 #route create
 @app.route('/')
 def index():
+	flash("Harrao")
 
 	#cursor.execute('''INSERT INTO airline VALUES ('Sam')''')
 	return render_template('index.html')
@@ -78,6 +79,7 @@ def login():
 
 	return render_template('login.html', name=name, password=password, form=form)
 
+
 @app.route('/registers',  methods=['GET', 'POST'])
 def registers():
 
@@ -89,8 +91,81 @@ def registers():
 
 		registerType =  request.form.get('LoginType')
 
+		if registerType == "1":
+
+			return redirect(url_for('register_customer'))
+
+		elif registerType == "2":
+			return redirect(url_for('register_agent'))
+
+		elif registerType == "3":
+
+			return redirect(url_for('register_staff'))
 
 
+
+
+
+
+
+
+		print(registerType)
+
+
+
+
+
+
+		
+
+	return render_template('register.html')
+
+@app.route('/register_agent',methods = ['GET','POST'])
+def register_agent():
+	if request.method == 'POST':
+		email = request.form.get('email')
+		password1 = request.form.get('password1')
+		password2 = request.form.get('password2')
+
+		agentID = request.form.get('agentID')
+
+		sql = '''INSERT INTO booking_agent VALUES ('{}','{}','{}')'''.format(email, password1, agentID)
+		with cnx.cursor() as cur:
+			cur.execute(sql)
+
+		cnx.commit()
+
+		return redirect(url_for('register_success'))
+
+	return render_template('register_agent.html')
+
+
+@app.route('/register_staff',methods = ['GET','POST'])
+def register_staff():
+	if request.method == 'POST':
+		username = request.form.get('username')
+		password1 = request.form.get('password1')
+		password2 = request.form.get('password2')
+		first_name = request.form.get('firstName')
+		last_name = request.form.get('lastName')
+		airlineName = request.form.get('airlineName')
+		dob = request.form.get('Date of Birth')
+		agentID = request.form.get('agentID')
+
+		sql = '''INSERT INTO airline_staff VALUES ('{}','{}','{}','{}','{}','{}')'''.format(username,password1,first_name,last_name,dob,airlineName)
+		with cnx.cursor() as cur:
+			cur.execute(sql)
+
+		cnx.commit()
+
+		return redirect(url_for('register_success'))
+
+	return render_template('register_staff.html')
+
+@app.route('/register_customer',  methods = ['GET','POST'])
+def register_customer():
+
+	if request.method == 'POST':
 		email = request.form.get('email')
 		first_name = request.form.get('firstName')
 		password1 = request.form.get('password1')
@@ -105,36 +180,28 @@ def registers():
 		passportCountry = street = request.form.get('Street')
 		dob = request.form.get('Date of Birth')
 
+		sql = '''INSERT INTO customer VALUES ('{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}')'''.format(email, first_name,
+																							 password1, buildingNumber,
+																							 street, city, state,
+																							 phoneNumber,
+																							 passportNumber,
+																							 passportExpiration,
+																							 passportCountry, dob)
 
-		#assert types
+		with cnx.cursor() as cur:
+			cur.execute(sql)
+
+		cnx.commit()
+
+		return redirect(url_for('register_success'))
+
+	return render_template('register_customer.html')
+
+@app.route('/register_success')
+def register_success():
+	return render_template('register_success.html')
 
 
-		print(registerType)
-
-
-
-
-
-		if len(email) < 4:
-			  flash('Email must be greater than 3 characters.', category='error')
-
-
-
-
-		elif len(first_name) < 2:
-		   flash('First name must be greater than 1 character.', category='error')
-		elif password1 != password2:
-		   flash('Passwords don\'t match.', category='error')
-		elif len(password1) < 7:
-		   flash('Password must be at least 7 characters.', category='error')
-		else:
-			pass
-
-		
-
-	return render_template('register.html')
-
-					   
 @app.route('/search')
 def search():
 	return render_template('search.html')
