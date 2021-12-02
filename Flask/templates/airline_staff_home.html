@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+{% if name %}
+	<h1>Welcome back, {{name}}</h1>
+{% else %}
+
+	<h1>Hello World</h1>
+
+	<p> returning some random text </p>
+
+{% endif %}
+
+{% if name == 'Admin' %}
+
+<a class="btn btn-primary" href="{{ url_for('create_flight')}}" role="button">Create New Flights</a>
+
+
+<a class="btn btn-primary" href="{{ url_for('add_airplane')}}" role="button">Add Airplane</a>
+
+
+    <a class="btn btn-primary" href="{{ url_for('add_airport')}}" role="button">Add Airport</a>
+
+    <a class="btn btn-primary" href="{{ url_for('customer_searchforflights')}}" role="button">Grant New Permissions</a>
+
+    <a class="btn btn-primary" href="{{ url_for('customer_searchforflights')}}" role="button">Add Booking Agents</a>
+
+
+
+{% endif %}
+
+{% if name == 'Operator' %}
+
+ <a class="btn btn-primary" href="{{ url_for('customer_searchforflights')}}" role="button">Change Status of Flights</a>
+
+{% endif %}
+
+<a class="btn btn-primary" href="{{ url_for('index')}}" role="button">Logout</a>
+
+
+<a class="btn btn-primary" href="{{ url_for('view_flights')}}" role="button">View My Flights</a>
+
+<a class="btn btn-primary" href="{{ url_for('index')}}" role="button">View All Booking Agents</a>
+
+
+
+
+    <a class="btn btn-primary" href="{{ url_for('customer_searchforflights')}}" role="button">View Frequent Customers</a>
+
+	<a class="btn btn-primary" href="{{ url_for('booking_agent_viewmyflights')}}" role="button">View Reports</a>
+
+
+
+<a class="btn btn-primary" href="{{ url_for('booking_agent_viewmyflights')}}" role="button">Compare Revenue Earned</a>
+
+
+    <a class="btn btn-primary" href="{{ url_for('customer_searchforflights')}}" role="button">View Top Destinations</a>
+
+
+
+
+
+	<p> fnjjksnfekanfak </p>
+
+{% endblock %}

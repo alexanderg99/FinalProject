@@ -11,7 +11,7 @@
                         <th>Arrival Airport</th>
                         <th>Arrival Time</th>
                         <th>Price</th>
-                        <th>Upcoming</th>
+                        <th>Status</th>
                         <th>Airplane ID</th>
                     </tr>
                     </thead>
@@ -29,22 +29,37 @@
                         <td>{{row['status']}}</td>
                         <td>{{row['airplane_id']}}</td>
 
+                        {% if permission == 'Operator' %}
+
+                        <td>{{row['airline_name']}}</td>
+
+                        <td>
+                            <form method="POST" action="{{url_for('customer_searchforflights')}}">
+                                <input type="hidden" name="airline_name" value="{{row['airline_name']}}" />
+                                <input type="hidden" name="flight_num" value= {{row['flight_num']}}>
+                            <button type="submit" class="btn btn-primary">Change Flight Status</button>
+                                </form>
+                        </td>
+
+
+                        {% endif %}
+
                         {% if row['status'] == 'Upcoming' %}
 
                         <td>
                             <form method="POST">
-                                <input type="hidden" name="flight_num" value= {{row['flight_num']}}/>
+                                <input type="hidden" name="flight_num" value= {{row['flight_num']}}>
                             <button type="submit" class="btn btn-primary">Purchase</button>
 
 
                                 </form>
                         </td>
+                        {% endif %}
 
 
-                    {% endif %}
 
 
-                    <td style="word-break:break-all; width: 200px;"><p style="word-wrap: break-word;  word-wrap: break-word; width: 200px;">{{row[5]}}</p></td>
+
                     </tr>
 
 

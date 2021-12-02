@@ -9,6 +9,15 @@ import pymysql.cursors
 
 userPrimaryKey = None
 loginType = None
+permissions = None
+airline = None
+
+labels = [
+    'JAN', 'FEB', 'MAR', 'APR',
+    'MAY', 'JUN', 'JUL', 'AUG',
+    'SEP', 'OCT', 'NOV', 'DEC'
+]
+
 
 #create Flask instance
 app = Flask(__name__)
@@ -267,10 +276,10 @@ def customer_purchasetickets(flight):
 
 					#redirect agent to enter the customer email
 
-					return booking_agent_purchasing(ticket_ID,today)
+					return render_template('booking_agent_purchasing.html',ticket_ID=ticket_ID,today=today)
 
-
-
+					#return booking_agent_purchasing(ticket_ID,today)
+					#return redirect(url_for('booking_agent_purchasing',ticket_ID=ticket_ID,today=today))
 				else:
 
 					query = '''INSERT INTO purchases VALUES ('{}','{}',null,'{}')'''.format(ticket_ID, email, today)
@@ -282,13 +291,11 @@ def customer_purchasetickets(flight):
 
 		print("Hello")
 		return customer_ticketspurchased(message)
-
-
 	return render_template('customer_purchasetickets.html', user=userPrimaryKey)
 
 @app.route('/customer_ticketspurchased')
 def customer_ticketspurchased(message):
-	return render_template('customer_ticketspurchased.html', message=message)
+	return render_template('customer_ticketspurchased.html', message=message, loginType = loginType)
 
 
 @app.route('/customer_searchforflights',methods = ['GET','POST'])
@@ -304,11 +311,17 @@ def customer_searchforflights():
 
 	if request.method == 'POST':
 
+		if permissions == 'Operator':
+
+			flight_num = request.form.get('flight_num')
+			airline_name = request.form.get('airline_name')
+			print(airline_name)
+			print(flight_num)
+			return render_template('change_status.html',flight_num=flight_num,airline_name=airline_name)
+
 		flight_num = request.form.get('flight_num')
 		#return redirect(url_for('customer_purchasetickets', flight= flight_num))
 		return customer_purchasetickets(flight_num)
-
-
 
 	return render_template('customer_searchforflights.html', data=data)
 
@@ -364,25 +377,170 @@ def booking_agent_viewmyflights():
 
 
 @app.route('/booking_agent_purchasing',methods = ['GET','POST'])
-def booking_agent_purchasing(ticket_ID,today):
+def booking_agent_purchasing():
 
 	if request.method == 'POST':
-
-		if not request.form.get('customer_email'):
-			return render_template('booking_agent_purchasing.html')
-
-
-		else:
-
+		if request.form.get('customer_email'):
+			print("Harraozzzz")
 			with cnx.cursor() as cur:
 				email = request.form.get('customer_email')
+				ticket_ID = request.form.get('ticket_ID')
+				today = request.form.get('today')
+
+				print(ticket_ID)
 
 				user = userPrimaryKey
 				query = '''INSERT INTO purchases VALUES ('{}','{}','{}','{}')'''.format(ticket_ID, email, user, today)
 				cur.execute(query)
 
 			cnx.commit()
-	return render_template('booking_agent_purchasing.html')
+
+			message = 'You have helped user with email {} buy the ticket! Your ticket number is {}'.format(email,
+																								  ticket_ID)
+
+			print("Hello")
+			return customer_ticketspurchased(message)
+	#return render_template('booking_agent_purchasing.html')
+
+
+
+
+@app.route('/airline_staff_home')
+def airline_staff_home():
+	global userPrimaryKey
+	global loginType
+	global airline
+	global permissions
+
+	airline = 'China Eastern'
+	userPrimaryKey = 'bg99'
+	loginType = 'staff'
+
+	with cnx.cursor() as cur:
+		query = "SELECT airline_name from airline_staff where username = '{}'".format(userPrimaryKey)
+		cur.execute(query)
+		data = cur.fetchone()
+		airline = data['airline_name']
+
+
+
+	with cnx.cursor() as cur:
+		query = "SELECT permission_type from permission where username = '{}'".format(userPrimaryKey)
+		cur.execute(query)
+		data = cur.fetchone()
+		if data['permission_type'] == 'Admin':
+			permissions = 'Admin'
+		elif data['permission_type'] == 'Operator':
+			permissions = 'Operator'
+
+
+	if permissions:
+		return render_template('airline_staff_home.html', name=permissions)
+
+
+	return render_template('airline_staff_home.html', name='Alex G')
+
+@app.route('/create_flight', methods=['GET','POST'])
+def create_flight():
+
+	if request.method == 'POST':
+
+		airline_name = request.form.get('airline_name')
+		flight_num = request.form.get('flight_num')
+		departure_airport = request.form.get('departure_airport')
+		departure_time = request.form.get('departure_time')
+		arrival_airport = request.form.get('arrival_airport')
+		arrival_time = request.form.get('arrival_time')
+		price = request.form.get('price')
+		status = request.form.get('status')
+		airplane_ID = request.form.get('airplane_ID')
+		query = "INSERT INTO flight VALUES ('{}','{}','{}','{}','{}','{}','{}','{}','{}')".format(airline_name,flight_num,departure_airport,departure_time,arrival_airport,arrival_time,price,status,airplane_ID)
+		with cnx.cursor() as cur:
+			cur.execute(query)
+
+		cnx.commit()
+
+		message = 'Successfully Created!'
+
+		return render_template('customer_ticketspurchased.html', message=message, loginType=loginType)
+	return render_template('create_flight.html')
+
+@app.route('/add_airplane', methods=['GET','POST'])
+def add_airplane():
+
+	if request.method == 'POST':
+
+		airline_name = request.form.get('airline_name')
+		flight_ID = request.form.get('flight_ID')
+		seats = request.form.get('seats')
+
+		query = "INSERT INTO flight VALUES ('{}','{}','{}')".format(airline_name,flight_ID,seats)
+		with cnx.cursor() as cur:
+			cur.execute(query)
+
+		cnx.commit()
+
+		message = 'Successfully Created!'
+
+		return render_template('customer_ticketspurchased.html', message=message, loginType=loginType)
+	return render_template('add_airplane.html')
+
+
+@app.route('/add_airport', methods=['GET','POST'])
+def add_airport():
+
+	if request.method == 'POST':
+
+		airport_name = request.form.get('airport_name')
+		airport_city = request.form.get('airport_city')
+
+		query = "INSERT INTO flight VALUES ('{}','{}')".format(airport_name,airport_city)
+
+		with cnx.cursor() as cur:
+			cur.execute(query)
+
+		cnx.commit()
+
+		message = 'Successfully Created!'
+
+		return render_template('customer_ticketspurchased.html', message=message, loginType=loginType)
+	return render_template('add_airport.html')
+
+@app.route('/change_status', methods=['GET','POST'])
+def change_status():
+
+	if request.method == 'POST':
+
+		airline_name = request.form.get('airline_name')
+		flight_number = request.form.get('flight_num')
+		new_status = request.form.get('new_status')
+
+		print(airline_name)
+		print(flight_number)
+
+		query = "UPDATE flight SET status = '{}' WHERE airline_name = '{}' and flight_num = '{}'".format(new_status,airline_name,flight_number)
+
+		with cnx.cursor() as cur:
+			cur.execute(query)
+
+		cnx.commit()
+
+		message = 'Successfully Updated!'
+
+		return render_template('customer_ticketspurchased.html', message=message, loginType=loginType)
+
+	return render_template('change_status.html')
+
+@app.route('/view_flights', methods=['GET','POST'])
+def view_flights():
+	if loginType == 'staff':
+		with cnx.cursor() as cur:
+			query = "SELECT * FROM flight WHERE airline_name = '{}'".format(airline)
+			cur.execute(query)
+			data = cur.fetchall()
+			print(permissions)
+
+	return render_template('customer_searchforflights.html', data=data, permission=permissions)
 
 if __name__ == '__main__':
     app.run()

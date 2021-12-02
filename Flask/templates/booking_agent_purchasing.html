@@ -1,9 +1,11 @@
 {% extends "base.html" %} {% block title %}Register Success!{% endblock %} {% block
 content %}
 <h3 align="center">{{message}}</h3>
-<form method="post">
+
+
+<form action="{{url_for('booking_agent_purchasing')}}" method="post">
 <div class="form-group">
-    <label for="customer_email">Enter Customer Email Here</label>
+    <label for="customer_email">Enter The Customer Email</label>
     <input
       type="text"
       class="form-control"
@@ -13,13 +15,25 @@ content %}
     />
   </div>
 
+    {% if ticket_ID %}
+<input type="hidden" name="ticket_ID" value= {{ticket_ID}}>
+    <h3 align="center">{{ticket_ID}}</h3>
+    {% endif %}
+
+    {% if today %}
+    <input type="hidden" name="today" value= {{today}}>
+    {% endif %}
+
 
   <br />
   <button type="submit" class="btn btn-primary">Submit</button>
 </form>
 
 
-<a class="btn btn-primary" href="{{ url_for('customer_home')}}" role="button">Back to Home</a>
+<br />
+
+
+<a class="btn btn-primary" href="{{ url_for('booking_agent_home')}}" role="button">Back to Home</a>
 
 
 {% endblock %}
