@@ -3,19 +3,12 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired
 import re
-
-from forms import MusicSearchForm
-
-from flaskext.mysql import MySQL
+from datetime import date
 import pymysql.cursors
-import mysql.connector
-
-
 
 
 userPrimaryKey = None
-
-
+loginType = None
 
 #create Flask instance
 app = Flask(__name__)
@@ -241,45 +234,155 @@ def view_public_info():
 def customer_home():
 
 	global userPrimaryKey
-	userPrimaryKey = 'John Roberts'
-	return render_template('customer_home.html', name='John Roberts')
+	userPrimaryKey = 'coreychen@nyu.edu'
+	return render_template('customer_home.html', name='Corey Chen')
 
 
-@app.route('/customer_purchasetickets')
-def customer_purchasetickets():
-	user = userPrimaryKey
-	with cnx.cursor() as cur:
-		query = "SELECT * FROM flight WHERE status = 'Upcoming'"
-		cur.execute(query)
-		data = cur.fetchall()
-		print(type(data))
-		print(data)
+@app.route('/customer_purchasetickets', methods = ['GET','POST'])
+def customer_purchasetickets(flight):
+
+	global loginType
+
+	if request.method == 'POST':
+
+		with cnx.cursor() as cur:
+			#search for unbought tickets.
+			query2 = "SELECT flight.flight_num,ticket.ticket_ID FROM (flight natural join ticket) left join purchases on ticket.ticket_id = purchases.ticket_id where flight.status = 'Upcoming' and ticket.flight_num = '{}' and purchases.customer_email is null".format(
+				flight)
+			cur.execute(query2)
+
+			data = cur.fetchone()
+			if not data:
+				message = 'There is no tickets!'
+				return customer_ticketspurchased(message)
+			else:
+
+
+				today = date.today()
+				today = today.strftime("%m-%d-%y")
+				ticket_ID = data['ticket_ID']
+				email = userPrimaryKey
+
+				if loginType == 'agent':
+
+					#redirect agent to enter the customer email
+
+					return booking_agent_purchasing(ticket_ID,today)
+
+
+
+				else:
+
+					query = '''INSERT INTO purchases VALUES ('{}','{}',null,'{}')'''.format(ticket_ID, email, today)
+				cur.execute(query)
+
+			cnx.commit()
+		message = 'You have bought the ticket! Your ticket number is {} for flight {}'.format(data['ticket_ID'],
+																							  data['flight_num'])
+
+		print("Hello")
+		return customer_ticketspurchased(message)
+
+
 	return render_template('customer_purchasetickets.html', user=userPrimaryKey)
 
-@app.route('/customer_searchforflights')
+@app.route('/customer_ticketspurchased')
+def customer_ticketspurchased(message):
+	return render_template('customer_ticketspurchased.html', message=message)
+
+
+@app.route('/customer_searchforflights',methods = ['GET','POST'])
 def customer_searchforflights():
 	user = userPrimaryKey
 	with cnx.cursor() as cur:
 		query = "SELECT * FROM flight WHERE status = 'Upcoming'"
 		cur.execute(query)
 		data = cur.fetchall()
-
 		print(type(data))
 		print(data)
+		print(request.method)
+
+	if request.method == 'POST':
+
+		flight_num = request.form.get('flight_num')
+		#return redirect(url_for('customer_purchasetickets', flight= flight_num))
+		return customer_purchasetickets(flight_num)
+
+
+
 	return render_template('customer_searchforflights.html', data=data)
 
 @app.route('/customer_trackmyspending')
 def customer_trackmyspending():
-	user = userPrimaryKey
+	with cnx.cursor() as cur:
+		query = "SELECT sum(flight.price) FROM ticket natural join purchases natural join flight WHERE purchases.customer_email = '{}'".format(userPrimaryKey)
+		cur.execute(query)
+		data = cur.fetchall()
+		total = data
 
-	return render_template('customer_trackmyspending.html', user=userPrimaryKey)
+
+	return render_template('customer_trackmyspending.html', data=data[0]['sum(flight.price)'])
 
 
 @app.route('/customer_viewmyflights')
 def customer_viewmyflights():
+	global userPrimaryKey
 	user = userPrimaryKey
-	return render_template('customer_viewmyflights.html', user=userPrimaryKey)
+	with cnx.cursor() as cur:
+		query = "SELECT * FROM flight natural join ticket natural join purchases WHERE purchases.customer_email = '{}'".format(user)
+		cur.execute(query)
+		data = cur.fetchall()
 
+		print(type(data))
+		print(data)
+	return render_template('customer_viewmyflights.html', data=data)
+
+
+@app.route('/booking_agent_home')
+def booking_agent_home():
+	global userPrimaryKey
+	global loginType
+	userPrimaryKey = 23
+	loginType = 'agent'
+	return render_template('booking_agent_home.html', name='Agent Smith')
+
+
+
+@app.route('/booking_agent_viewmyflights')
+def booking_agent_viewmyflights():
+	global userPrimaryKey
+	user = userPrimaryKey
+	print(user)
+	with cnx.cursor() as cur:
+		query = "SELECT * FROM flight natural join ticket natural join purchases WHERE purchases.booking_agent_id = '{}'".format(user)
+		cur.execute(query)
+		data = cur.fetchall()
+
+		print(type(data))
+		print(data)
+	return render_template('customer_viewmyflights.html', data=data)
+
+
+@app.route('/booking_agent_purchasing',methods = ['GET','POST'])
+def booking_agent_purchasing(ticket_ID,today):
+
+	if request.method == 'POST':
+
+		if not request.form.get('customer_email'):
+			return render_template('booking_agent_purchasing.html')
+
+
+		else:
+
+			with cnx.cursor() as cur:
+				email = request.form.get('customer_email')
+
+				user = userPrimaryKey
+				query = '''INSERT INTO purchases VALUES ('{}','{}','{}','{}')'''.format(ticket_ID, email, user, today)
+				cur.execute(query)
+
+			cnx.commit()
+	return render_template('booking_agent_purchasing.html')
 
 if __name__ == '__main__':
     app.run()

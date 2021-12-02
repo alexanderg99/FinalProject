@@ -28,10 +28,33 @@
                         <td>{{row['price']}}</td>
                         <td>{{row['status']}}</td>
                         <td>{{row['airplane_id']}}</td>
+
+                        {% if row['status'] == 'Upcoming' %}
+
+                        <td>
+                            <form method="POST">
+                                <input type="hidden" name="flight_num" value= {{row['flight_num']}}/>
+                            <button type="submit" class="btn btn-primary">Purchase</button>
+
+
+                                </form>
+                        </td>
+
+
+                    {% endif %}
+
+
                     <td style="word-break:break-all; width: 200px;"><p style="word-wrap: break-word;  word-wrap: break-word; width: 200px;">{{row[5]}}</p></td>
                     </tr>
+
+
+
+
                     {% endfor %}
                     </tbody>
+
+
+
         </table>
 
 
