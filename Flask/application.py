@@ -81,22 +81,24 @@ class register(FlaskForm):
 #login page
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-	name = None
-	password = None
-	form = register()
+	if request.method == 'POST':
+		loginType = request.form.get('LoginType')
+
+		if loginType == "1":
+
+			return redirect(url_for('register_customer'))
+
+		elif loginType == "2":
+			return redirect(url_for('register_agent'))
+
+		elif loginType == "3":
+
+			return redirect(url_for('register_staff'))
 
 
-	if form.validate_on_submit():
 
-		print('hello')
-		name = form.name.data
-		form.name.data = ''
-		password = form.password.data
-		form.password.data = ''
 
-		print(name,password)
-
-	return render_template('login.html', name=name, password=password, form=form)
+	return render_template('register.html')
 
 
 @app.route('/registers',  methods=['GET', 'POST'])
