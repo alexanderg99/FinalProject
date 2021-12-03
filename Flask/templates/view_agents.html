@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<table class="table table-striped">
+    <thead>
+                    <tr>
+                    <th>Agent Email</th>
+                    <th>Booking Agent ID</th>
+
+                        {% if redir %}
+                        <th>Add Agent</th>
+
+                        {% else %}
+                        <th>Sales</th>
+                         {% endif %}
+
+                    </tr>
+                    </thead>
+
+     <tbody>
+                    {% for row in data %}
+                    <tr>
+                    <td>{{row['email']}}</td>
+                    <td>{{row['booking_agent_id']}}</td>
+                        {% if redir %}
+                         <td>
+                            <form method="POST" action="{{url_for('add_agents')}}">
+                                <input type="hidden" name="email" value= {{row['email']}}>
+                            <button type="submit" class="btn btn-primary">Add This Guy</button>
+
+
+                                </form>
+                        </td>
+                        {% else %}
+                    <td>{{row['sales']}}</td>
+                        {% endif %}
+
+
+                    </tr>
+
+
+
+
+
+
+                    {% endfor %}
+                    </tbody>
+
+    </table>
+{% endblock %}

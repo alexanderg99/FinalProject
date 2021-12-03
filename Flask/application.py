@@ -5,12 +5,14 @@ from wtforms.validators import DataRequired
 import re
 from datetime import date
 import pymysql.cursors
+import random
 
 
 userPrimaryKey = None
 loginType = None
 permissions = None
 airline = None
+
 
 labels = [
     'JAN', 'FEB', 'MAR', 'APR',
@@ -46,7 +48,18 @@ cnx = pymysql.connect(
 #route create
 @app.route('/')
 def index():
-	flash("Harrao")
+
+	global  userPrimaryKey
+	global  loginType
+	global permissions
+	global airline
+
+	userPrimaryKey = None
+	loginType = None
+	permissions = None
+	airline = None
+
+
 
 	#cursor.execute('''INSERT INTO airline VALUES ('Sam')''')
 	return render_template('index.html')
@@ -130,8 +143,10 @@ def register_agent():
 
 			else:
 				sql = '''INSERT INTO booking_agent VALUES ('{}','{}','{}')'''.format(email, password1, agentID)
+
 				with cnx.cursor() as cur:
 					cur.execute(sql)
+
 
 				cnx.commit()
 
@@ -162,10 +177,16 @@ def register_staff():
 				error = "This user already exists!"
 				return render_template('register_staff.html', error = error)
 			else:
-
-				sql = '''INSERT INTO airline_staff VALUES ('{}','{}','{}','{}','{}','{}')'''.format(username,password1,first_name,last_name,dob,airlineName)
 				with cnx.cursor() as cur:
+
+					sql = '''INSERT INTO airline_staff VALUES ('{}','{}','{}','{}','{}','{}')'''.format(username,password1,first_name,last_name,dob,airlineName)
+
+
+
+					sql2 = '''INSERT INTO permission VALUES ('{}', 'None')'''.format(username)
+
 					cur.execute(sql)
+					cur.execute(sql2)
 
 				cnx.commit()
 
@@ -355,6 +376,8 @@ def customer_viewmyflights():
 def booking_agent_home():
 	global userPrimaryKey
 	global loginType
+
+
 	userPrimaryKey = 23
 	loginType = 'agent'
 	return render_template('booking_agent_home.html', name='Agent Smith')
@@ -413,7 +436,7 @@ def airline_staff_home():
 	global permissions
 
 	airline = 'China Eastern'
-	userPrimaryKey = 'bg99'
+	userPrimaryKey = 'alexg99'
 	loginType = 'staff'
 
 	with cnx.cursor() as cur:
@@ -445,7 +468,7 @@ def create_flight():
 
 	if request.method == 'POST':
 
-		airline_name = request.form.get('airline_name')
+
 		flight_num = request.form.get('flight_num')
 		departure_airport = request.form.get('departure_airport')
 		departure_time = request.form.get('departure_time')
@@ -453,8 +476,10 @@ def create_flight():
 		arrival_time = request.form.get('arrival_time')
 		price = request.form.get('price')
 		status = request.form.get('status')
-		airplane_ID = request.form.get('airplane_ID')
-		query = "INSERT INTO flight VALUES ('{}','{}','{}','{}','{}','{}','{}','{}','{}')".format(airline_name,flight_num,departure_airport,departure_time,arrival_airport,arrival_time,price,status,airplane_ID)
+		airplane_ID = request.form.get('airplane_number')
+
+		query = "INSERT INTO flight VALUES ('{}','{}','{}','{}','{}','{}','{}','{}','{}')".format(airline,flight_num,departure_airport,departure_time,arrival_airport,arrival_time,price,status,airplane_ID)
+
 		with cnx.cursor() as cur:
 			cur.execute(query)
 
@@ -462,8 +487,39 @@ def create_flight():
 
 		message = 'Successfully Created!'
 
+		generate_seats(airline,flight_num,airplane_ID)
+
 		return render_template('customer_ticketspurchased.html', message=message, loginType=loginType)
 	return render_template('create_flight.html')
+
+
+
+def generate_seats(airline_name,flight_num,airplane_ID):
+	query = "SELECT airplane.seats from airplane natural join flight where flight.airplane_ID = '{}' and flight.airline_name = '{}'".format(airplane_ID,airline_name)
+	with cnx.cursor() as cur:
+		cur.execute(query)
+	cnx.commit()
+
+
+	data = cur.fetchone()
+	print(data['seats'])
+
+
+
+	for i in range(data['seats']):
+		with cnx.cursor() as cur:
+			query = "INSERT INTO ticket VALUES ('{}','{}','{}')".format(random.randint(10,999999),airline_name,flight_num)
+			cur.execute(query)
+			print('Added Ticket!')
+		cnx.commit()
+
+
+
+
+
+
+
+
 
 @app.route('/add_airplane', methods=['GET','POST'])
 def add_airplane():
@@ -494,7 +550,7 @@ def add_airport():
 		airport_name = request.form.get('airport_name')
 		airport_city = request.form.get('airport_city')
 
-		query = "INSERT INTO flight VALUES ('{}','{}')".format(airport_name,airport_city)
+		query = "INSERT INTO airport VALUES ('{}','{}')".format(airport_name,airport_city)
 
 		with cnx.cursor() as cur:
 			cur.execute(query)
@@ -541,6 +597,151 @@ def view_flights():
 			print(permissions)
 
 	return render_template('customer_searchforflights.html', data=data, permission=permissions)
+
+
+@app.route('/view_agents', methods=['GET','POST'])
+def view_agents():
+	if loginType == 'staff':
+		with cnx.cursor() as cur:
+			query = "SELECT * FROM booking_agent natural join booking_agent_work_for WHERE airline_name = '{}'".format(airline)
+			cur.execute(query)
+			data = cur.fetchall()
+
+
+	return render_template('view_agents.html', data=data, permission=permissions)
+
+
+
+
+
+
+@app.route('/view_customers', methods=['GET','POST'])
+def view_customers():
+	if loginType == 'staff':
+		with cnx.cursor() as cur:
+			query = "SELECT customer.name FROM ticket natural join purchases natural join customer WHERE ticket.airline_name = '{}'".format(airline)
+			print(airline)
+			cur.execute(query)
+			data = cur.fetchall()
+			print(data)
+
+
+	return render_template('view_customers.html', data=data, permission=permissions)
+
+
+
+@app.route('/view_reports', methods=['GET','POST'])
+def view_reports():
+	if loginType == 'staff':
+		with cnx.cursor() as cur:
+
+
+			query = "SELECT sum(flight.price) as sales FROM ticket natural join purchases natural join flight WHERE ticket.airline_name = '{}'".format(airline)
+			print(airline)
+			cur.execute(query)
+			data = cur.fetchall()
+			print(data)
+
+
+	return render_template('view_reports.html', data=data, permission=permissions)
+
+@app.route('/compare_revenue_earned', methods=['GET','POST'])
+def compare_revenue_earned():
+	if loginType == 'staff':
+		with cnx.cursor() as cur:
+
+
+			query = "SELECT sum(flight.price) as sales FROM ticket natural join purchases natural join flight WHERE ticket.airline_name = '{}'".format(airline)
+			print(airline)
+			cur.execute(query)
+			data = cur.fetchall()
+			print(data)
+
+
+	return render_template('compare_revenue_earned.html', data=data, permission=permissions)
+
+
+
+@app.route('/view_destinations', methods=['GET','POST'])
+def view_destinations():
+	if loginType == 'staff':
+		with cnx.cursor() as cur:
+			query = "SELECT * FROM airport"
+			cur.execute(query)
+			data = cur.fetchall()
+			print(data)
+
+
+	return render_template('view_destinations.html', data=data, permission=permissions)
+
+
+@app.route('/grant_new_permissions', methods=['GET','POST'])
+def grant_new_permissions():
+	if permissions == "Admin":
+
+		if request.method == 'POST':
+
+			new_status = request.form.get('new_status')
+			username = request.form.get('username')
+
+			print(new_status)
+			print(username)
+			query = "UPDATE permission SET permission_type = '{}' WHERE username = '{}'".format(new_status,
+																											 username)
+			with cnx.cursor() as cur:
+				cur.execute(query)
+
+			cnx.commit()
+
+			message = 'Permission Changed!'
+
+			return render_template('customer_ticketspurchased.html', message=message, loginType=loginType)
+
+
+
+
+		with cnx.cursor() as cur:
+			query = "SELECT * FROM airline_staff left join permission on airline_staff.username = permission.username"
+			print(airline)
+			cur.execute(query)
+			data = cur.fetchall()
+			print(data)
+
+
+	return render_template('grant_new_permissions.html', data=data, permission=permissions)
+
+
+@app.route('/add_agents', methods=['GET','POST'])
+def add_agents():
+
+	if request.method == 'POST':
+
+		email = request.form.get('email')
+
+		with cnx.cursor() as cur:
+			query = "INSERT INTO booking_agent_work_for values ('{}','{}')".format(email,airline)
+			cur.execute(query)
+		cnx.commit()
+
+
+
+
+	with cnx.cursor() as cur:
+		query = "SELECT booking_agent.* FROM booking_agent left join booking_agent_work_for on booking_agent.email = booking_agent_work_for.email where booking_agent_work_for.airline_name is null"
+		cur.execute(query)
+		data = cur.fetchall()
+		print(data)
+
+
+	return render_template('view_agents.html', data=data, redir=add_agents)
+
+
+
+
+
+
+
+
 
 if __name__ == '__main__':
     app.run()

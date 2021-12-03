@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<table class="table table-striped">
+    <thead>
+                    <tr>
+
+                        <th>Sales</th>
+
+                    </tr>
+                    </thead>
+
+     <tbody>
+                    {% for row in data %}
+                    <tr>
+                    <td>{{row['sales']}}</td>
+
+
+                    </tr>
+
+
+
+
+                    {% endfor %}
+                    </tbody>
+
+    </table>
+{% endblock %}
