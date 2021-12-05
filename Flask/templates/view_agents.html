@@ -1,7 +1,16 @@
 {% extends 'base.html' %}
 {% block content %}
 
+
+<form method="POST" action="{{url_for('view_agents')}}">
+
+                            <button type="submit" class="btn btn-primary">Last 5 years</button>
+</form>
+
+
 <table class="table table-striped">
+
+
     <thead>
                     <tr>
                     <th>Agent Email</th>

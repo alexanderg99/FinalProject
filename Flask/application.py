@@ -7,13 +7,13 @@ from datetime import date
 import pymysql.cursors
 import random
 
-
+# global variables that are used to control search results. some of the functions belonging to different user types render the same html page.
 userPrimaryKey = None
 loginType = None
 permissions = None
 airline = None
 
-
+# for bar chart if needed
 labels = [
     'JAN', 'FEB', 'MAR', 'APR',
     'MAY', 'JUN', 'JUL', 'AUG',
@@ -49,7 +49,7 @@ cnx = pymysql.connect(
 @app.route('/')
 def index():
 
-
+#reset all global variables
 
 	global  userPrimaryKey
 	global  loginType
@@ -65,19 +65,36 @@ def index():
 	return render_template('index.html')
 
 #route user
-@app.route('/search_info', methods=['GET', 'POST'])
-def search_info():
+@app.route('/search', methods=['GET', 'POST'])
+def search():
 
 
 
-	return render_template("search_info.html", loginType=loginType)
+	with cnx.cursor() as cur:
+		query = "select * from flight where status = 'Upcoming'"
+
+		cur.execute(query)
+		data = cur.fetchall()
+
+	return render_template('customer_searchforflights.html', data=data, loginType=loginType)
+
+
+
+
+
+
 
 @app.route('/purchase_info', methods=['GET', 'POST'])
 def purchase_info():
 
-
+	#to specify based on airports, etc as per project page. redirected from view my flight
 
 	return render_template("purchase_info.html", loginType=loginType)
+
+@app.route('/search_info', methods=['GET', 'POST'])
+def search_info():
+	# to specify based on airports, etc as per project page. redirected from search/purchase.
+	return render_template("search_info.html", loginType=loginType)
 
 
 
@@ -99,6 +116,8 @@ class register(FlaskForm):
 def login():
 
 	if request.method == 'POST':
+
+		#loginType is from the html.
 		loginType = request.form.get('LoginType')
 
 		if loginType == "1":
@@ -120,10 +139,8 @@ def login():
 
 @app.route('/registers',  methods=['GET', 'POST'])
 def registers():
-
+	#same code as above but redirected from a different page.
 	if request.method == 'POST':
-
-
 		registerType =  request.form.get('LoginType')
 
 		if registerType == "1":
@@ -266,10 +283,6 @@ def register_customer():
 def register_success():
 	return render_template('register_success.html')
 
-
-@app.route('/search')
-def search():
-	return render_template('search.html')
 #if name = customer, else if name = booking agent
 
 
@@ -289,6 +302,9 @@ def customer_home():
 
 @app.route('/customer_purchasetickets', methods = ['GET','POST'])
 def customer_purchasetickets(flight):
+
+
+	#this is not just for customer but agent uses it too. i was too lazy to rename
 
 	global loginType
 
@@ -407,10 +423,18 @@ def customer_viewmyflights():
 	if request.method == 'POST':
 		criteria = request.form.get('criteria')
 		input_value = request.form.get('input_value')
+		user = request.form.get('customer_email')
+		print(user, "yay")
+
+		print(criteria)
+		print(input_value)
 
 
-	global userPrimaryKey
-	user = userPrimaryKey
+	if not request.form.get('customer_email'):
+
+		user = userPrimaryKey
+
+
 	with cnx.cursor() as cur:
 
 		if criteria == None and input_value == None:
@@ -448,7 +472,18 @@ def booking_agent_home():
 
 	return render_template('booking_agent_home.html', name='Chris')
 
+@app.route('/booking_agent_viewcommission')
+def booking_agent_viewcommission():
 
+	with cnx.cursor() as cur:
+
+		query_email = "select sum(flight.price)*0.1 as total_commission, sum(flight.price)/300 as average_commission,  count(*) as salecount from purchases natural join booking_agent natural join flight natural join ticket where booking_agent.email = '{}' group by booking_agent.email".format(userPrimaryKey)
+		cur.execute(query_email)
+		data = cur.fetchall()
+
+
+
+	return render_template('booking_agent_viewcommission.html', data=data)
 
 @app.route('/booking_agent_viewmyflights',methods = ['GET','POST'])
 def booking_agent_viewmyflights():
@@ -499,16 +534,25 @@ def booking_agent_purchasing():
 				print(ticket_ID)
 
 				check = "SELECT airline_name from ticket where ticket_ID = '{}'".format(ticket_ID)
+				cur.execute(check)
+				data = cur.fetchall()
 
-				if check != airline:
+				if data[0]["airline_name"] != airline:
 					message = 'Not from the correct airline'
 					return customer_ticketspurchased(message)
 
 				else:
-
-
 					user = userPrimaryKey
-					query = '''INSERT INTO purchases VALUES ('{}','{}','{}','{}')'''.format(ticket_ID, email, user, today)
+					check = "SELECT booking_agent_id from booking_agent where email = '{}'".format(user)
+					cur.execute(check)
+					data=cur.fetchall()
+					id = data[0]["booking_agent_id"]
+
+
+
+
+
+					query = '''INSERT INTO purchases VALUES ('{}','{}','{}','{}')'''.format(ticket_ID, email, id, today)
 					cur.execute(query)
 
 				cnx.commit()
@@ -710,18 +754,29 @@ def staff_view_flights():
 		print(permissions)
 
 
-	return render_template('customer_searchforflights.html', data=data, permission=permissions)
+	return render_template('customer_viewmyflights.html', data=data, permission=permissions)
 
 
 
 
 @app.route('/view_agents', methods=['GET','POST'])
 def view_agents():
+
+	if request.method == "POST":
+		date = '2017-12-12'
+		sort_query = "select booking_agent.email, sum(flight.price) as sales from ticket natural join booking_agent_work_for natural join flight natural join purchases natural join booking_agent where booking_agent_work_for.airline_name = '{}' and purchases.booking_agent_id is not null and purchases.purchase_date > '{}' group by booking_agent.email order by sales desc limit 5;".format(airline,date)
+		with cnx.cursor() as cur:
+			cur.execute(sort_query)
+			data = cur.fetchall()
+			return render_template('view_agents.html', data=data, permission=permissions)
+
 	if loginType == 'staff':
 		with cnx.cursor() as cur:
 			query = "SELECT * FROM booking_agent natural join booking_agent_work_for WHERE airline_name = '{}'".format(airline)
 			cur.execute(query)
 			data = cur.fetchall()
+
+
 
 
 	return render_template('view_agents.html', data=data, permission=permissions)
@@ -735,14 +790,15 @@ def view_agents():
 def view_customers():
 	if loginType == 'staff':
 		with cnx.cursor() as cur:
-			query = "SELECT customer.name FROM ticket natural join purchases natural join customer WHERE ticket.airline_name = '{}'".format(airline)
+
+			query = "select purchases.customer_email, count(*)  from purchases natural join ticket where ticket.airline_name = '{}'  group by purchases.customer_email order by count(*) desc;".format(airline)
 			print(airline)
 			cur.execute(query)
 			data = cur.fetchall()
 			print(data)
 
 
-	return render_template('view_customers.html', data=data, permission=permissions)
+	return render_template('view_customers.html', data=data, permission=permissions, airline=airline)
 
 
 
@@ -782,7 +838,7 @@ def compare_revenue_earned():
 def view_destinations():
 	if loginType == 'staff':
 		with cnx.cursor() as cur:
-			query = "SELECT * FROM airport"
+			query = "select count(*) as dest_count, flight.arrival_airport as dest from flight where flight.airline_name = '{}' group by flight.arrival_airport order by dest_count desc".format(airline)
 			cur.execute(query)
 			data = cur.fetchall()
 			print(data)
