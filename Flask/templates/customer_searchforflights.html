@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% block content %}
 
+<a class="btn btn-primary" href="{{ url_for('purchase_info')}}" role="button">Specific Search</a>
+
 <table class="table table-striped">
     <thead>
                     <tr>
@@ -44,17 +46,28 @@
 
                         {% endif %}
 
+
+
                         {% if row['status'] == 'Upcoming' %}
 
                         <td>
-                            <form method="POST">
+                            {% if loginType == 'agent' %}
+                            <form method="POST" action="{{url_for('customer_searchforflights')}}">
                                 <input type="hidden" name="flight_num" value= {{row['flight_num']}}>
                             <button type="submit" class="btn btn-primary">Purchase</button>
+
+                                {% else %}
+                            <form method="POST" action="{{url_for('customer_searchforflights')}}">
+                                <input type="hidden" name="flight_num" value= {{row['flight_num']}}>
+                            <button type="submit" class="btn btn-primary">Purchase</button>
+
+                                {% endif %}
 
 
                                 </form>
                         </td>
                         {% endif %}
+
 
 
 

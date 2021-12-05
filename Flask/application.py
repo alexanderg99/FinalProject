@@ -49,6 +49,8 @@ cnx = pymysql.connect(
 @app.route('/')
 def index():
 
+
+
 	global  userPrimaryKey
 	global  loginType
 	global permissions
@@ -59,12 +61,26 @@ def index():
 	permissions = None
 	airline = None
 
-
-
 	#cursor.execute('''INSERT INTO airline VALUES ('Sam')''')
 	return render_template('index.html')
 
 #route user
+@app.route('/search_info', methods=['GET', 'POST'])
+def search_info():
+
+
+
+	return render_template("search_info.html", loginType=loginType)
+
+@app.route('/purchase_info', methods=['GET', 'POST'])
+def purchase_info():
+
+
+
+	return render_template("purchase_info.html", loginType=loginType)
+
+
+
 @app.route('/user/<name>')
 def user(name):
 
@@ -81,6 +97,7 @@ class register(FlaskForm):
 #login page
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+
 	if request.method == 'POST':
 		loginType = request.form.get('LoginType')
 
@@ -323,30 +340,51 @@ def customer_ticketspurchased(message):
 
 @app.route('/customer_searchforflights',methods = ['GET','POST'])
 def customer_searchforflights():
-	user = userPrimaryKey
-	with cnx.cursor() as cur:
-		query = "SELECT * FROM flight WHERE status = 'Upcoming'"
-		cur.execute(query)
-		data = cur.fetchall()
-		print(type(data))
-		print(data)
-		print(request.method)
+
+	criteria = None
+	input_value = None
 
 	if request.method == 'POST':
+		criteria = request.form.get('criteria')
+		input_value = request.form.get('input_value')
 
-		if permissions == 'Operator':
+		print  ("AAAAAAAAAA1")
 
+
+	with cnx.cursor() as cur:
+
+		if criteria == None and input_value == None:
+			print("Noooo")
+
+			query = "SELECT * FROM flight WHERE status = 'Upcoming'"
+
+		else:
+			print(criteria, input_value, "Hello!")
+			query = "SELECT * FROM flight WHERE status = 'Upcoming' and flight.{} = '{}'".format(criteria,input_value)
+		cur.execute(query)
+		data = cur.fetchall()
+
+
+		if request.method == 'POST' and request.form.get('flight_num'):
+
+			print("Yayayaya")
 			flight_num = request.form.get('flight_num')
-			airline_name = request.form.get('airline_name')
-			print(airline_name)
-			print(flight_num)
-			return render_template('change_status.html',flight_num=flight_num,airline_name=airline_name)
 
-		flight_num = request.form.get('flight_num')
-		#return redirect(url_for('customer_purchasetickets', flight= flight_num))
-		return customer_purchasetickets(flight_num)
 
-	return render_template('customer_searchforflights.html', data=data)
+
+			if permissions == 'Operator':
+
+
+				airline_name = request.form.get('airline_name')
+				print(airline_name)
+				print(flight_num)
+				return render_template('change_status.html',flight_num=flight_num,airline_name=airline_name)
+
+
+			#return redirect(url_for('customer_purchasetickets', flight= flight_num))
+			return customer_purchasetickets(flight_num)
+
+	return render_template('customer_searchforflights.html', data=data, loginType = loginType)
 
 @app.route('/customer_trackmyspending')
 def customer_trackmyspending():
@@ -360,12 +398,29 @@ def customer_trackmyspending():
 	return render_template('customer_trackmyspending.html', data=data[0]['sum(flight.price)'])
 
 
-@app.route('/customer_viewmyflights')
+@app.route('/customer_viewmyflights', methods = ['GET','POST'])
 def customer_viewmyflights():
+
+	criteria = None
+	input_value = None
+
+	if request.method == 'POST':
+		criteria = request.form.get('criteria')
+		input_value = request.form.get('input_value')
+
+
 	global userPrimaryKey
 	user = userPrimaryKey
 	with cnx.cursor() as cur:
-		query = "SELECT * FROM flight natural join ticket natural join purchases WHERE purchases.customer_email = '{}'".format(user)
+
+		if criteria == None and input_value == None:
+
+			query = "SELECT distinct * FROM flight natural join ticket natural join purchases WHERE purchases.customer_email = '{}'".format(user)
+
+		elif criteria:
+			query = "SELECT distinct * FROM flight natural join ticket natural join purchases WHERE purchases.customer_email = '{}' and flight.{} = '{}'".format(
+				user, criteria, input_value)
+
 		cur.execute(query)
 		data = cur.fetchall()
 
@@ -378,33 +433,62 @@ def customer_viewmyflights():
 def booking_agent_home():
 	global userPrimaryKey
 	global loginType
+	global airline
 
 
-	userPrimaryKey = 23
+	userPrimaryKey = 'harrao@gmail.com'
 	loginType = 'agent'
-	return render_template('booking_agent_home.html', name='Agent Smith')
+	with cnx.cursor() as cur:
+
+		query_email = "select airline_name from booking_agent_work_for where email = '{}'".format(userPrimaryKey)
+		cur.execute(query_email)
+		data = cur.fetchall()
+		airline = data[0]['airline_name']
+
+
+	return render_template('booking_agent_home.html', name='Chris')
 
 
 
-@app.route('/booking_agent_viewmyflights')
+@app.route('/booking_agent_viewmyflights',methods = ['GET','POST'])
 def booking_agent_viewmyflights():
+
 	global userPrimaryKey
 	user = userPrimaryKey
+
 	print(user)
+
+	criteria = None
+	input_value = None
+
+	if request.method == 'POST':
+		criteria = request.form.get('criteria')
+		input_value = request.form.get('input_value')
+
+
 	with cnx.cursor() as cur:
-		query = "SELECT * FROM flight natural join ticket natural join purchases WHERE purchases.booking_agent_id = '{}'".format(user)
+
+		print(criteria)
+		print(input_value)
+		if criteria == None and input_value == None:
+			query = "SELECT * FROM flight natural join ticket natural join purchases WHERE purchases.booking_agent_id = '{}'".format(user)
+		else:
+			query = "SELECT * FROM flight natural join ticket natural join purchases WHERE purchases.booking_agent_id = '{}' and flight.{} = '{}'".format(
+				user, criteria, input_value)
 		cur.execute(query)
 		data = cur.fetchall()
 
 		print(type(data))
 		print(data)
-	return render_template('customer_viewmyflights.html', data=data)
+	return render_template('customer_viewmyflights.html', data=data )
 
 
 @app.route('/booking_agent_purchasing',methods = ['GET','POST'])
 def booking_agent_purchasing():
 
 	if request.method == 'POST':
+
+
 		if request.form.get('customer_email'):
 			print("Harraozzzz")
 			with cnx.cursor() as cur:
@@ -414,16 +498,25 @@ def booking_agent_purchasing():
 
 				print(ticket_ID)
 
-				user = userPrimaryKey
-				query = '''INSERT INTO purchases VALUES ('{}','{}','{}','{}')'''.format(ticket_ID, email, user, today)
-				cur.execute(query)
+				check = "SELECT airline_name from ticket where ticket_ID = '{}'".format(ticket_ID)
 
-			cnx.commit()
+				if check != airline:
+					message = 'Not from the correct airline'
+					return customer_ticketspurchased(message)
 
-			message = 'You have helped user with email {} buy the ticket! Your ticket number is {}'.format(email,
-																								  ticket_ID)
+				else:
 
-			print("Hello")
+
+					user = userPrimaryKey
+					query = '''INSERT INTO purchases VALUES ('{}','{}','{}','{}')'''.format(ticket_ID, email, user, today)
+					cur.execute(query)
+
+				cnx.commit()
+
+				message = 'You have helped user with email {} buy the ticket! Your ticket number is {}'.format(email,
+																									  ticket_ID)
+
+
 			return customer_ticketspurchased(message)
 	#return render_template('booking_agent_purchasing.html')
 
@@ -589,16 +682,37 @@ def change_status():
 
 	return render_template('change_status.html')
 
-@app.route('/view_flights', methods=['GET','POST'])
-def view_flights():
-	if loginType == 'staff':
-		with cnx.cursor() as cur:
+
+
+@app.route('/staff_view_flights', methods=['GET','POST'])
+def staff_view_flights():
+
+	criteria = None
+	input_value = None
+
+	if request.method == 'POST':
+		criteria = request.form.get('criteria')
+		input_value = request.form.get('input_value')
+
+
+
+
+	with cnx.cursor() as cur:
+
+		if criteria == None and input_value == None:
 			query = "SELECT * FROM flight WHERE airline_name = '{}'".format(airline)
-			cur.execute(query)
-			data = cur.fetchall()
-			print(permissions)
+		else:
+			query = "SELECT * FROM flight WHERE airline_name = '{}' and flight.{} = '{}'".format(
+				airline, criteria, input_value)
+
+		cur.execute(query)
+		data = cur.fetchall()
+		print(permissions)
+
 
 	return render_template('customer_searchforflights.html', data=data, permission=permissions)
+
+
 
 
 @app.route('/view_agents', methods=['GET','POST'])

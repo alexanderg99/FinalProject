@@ -1,6 +1,9 @@
 {% extends 'base.html' %}
 {% block content %}
 
+<a class="btn btn-primary" href="{{ url_for('search_info')}}" role="button">Specific Search</a>
+
+
 <table class="table table-striped">
     <thead>
                     <tr>
@@ -43,5 +46,5 @@
 
         </table>
 
-
+<a class="btn btn-primary" href="{{ url_for('customer_home')}}" role="button">Specific Search</a>
 {% endblock %}
