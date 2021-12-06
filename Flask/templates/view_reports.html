@@ -27,6 +27,33 @@
     </table>
 
 
+<table class="table table-striped">
+    <thead>
+                    <tr>
+                        <th>Month</th>
+                    <th>Month Spend</th>
+
+
+                    </tr>
+                    </thead>
+
+     <tbody>
+                    {% for row in bardata %}
+                    <tr>
+                        <td>{{row}}</td>
+
+                    <td>{{bardata[row][0]['number_sold']}}</td>
+
+
+                    </tr>
+
+                    {% endfor %}
+                    </tbody>
+
+    </table>
+
+
+
 <br />
 
 <form method="post">

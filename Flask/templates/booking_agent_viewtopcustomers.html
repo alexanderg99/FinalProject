@@ -1,14 +1,13 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<a class="btn btn-primary" href="{{ url_for('get_duration')}}" role="button">Specific Search</a>
 
 
 <table class="table table-striped">
     <thead>
                     <tr>
-                    <th>Total Commission</th>
-                        <th>Average Commission</th>
+                    <th>Customer Email</th>
+
 
                         <th>Total Tickets</th>
 
@@ -17,59 +16,47 @@
                     </thead>
 
      <tbody>
-                    {% for row in data %}
+                    {% for row in ticket_data %}
                     <tr>
-                    <td>{{row['total_commission']}}</td>
-                         <td>{{row['average_commission']}}</td>
-                        <td>{{row['salecount']}}</td>
+                    <td>{{row['customer_email']}}</td>
+                         <td>{{row['count(*)']}}</td>
+
 
                     </tr>
-
-
-
-
-
-
-
 
                     {% endfor %}
                     </tbody>
 
     </table>
 
-<form method="post">
-<div class="form-group">
-    <label for="starting_date">Input Value Here in YYYY-MM-DD</label>
-    <input
-      type="text"
-      class="form-control"
-      id="starting_date"
-      name="starting_date"
-      placeholder=" Input Value Here"
-    />
-  </div>
-
-             <br />
-
-      <div class="form-group">
-    <label for="duration">How many months before?</label>
-    <input
-      type="text"
-      class="form-control"
-      id="duration"
-      name="duration"
-      placeholder=" Input Value Here"
-    />
-  </div>
-
-
-</select>
+<table class="table table-striped">
+    <thead>
+                    <tr>
+                    <th>Customer Email</th>
+                        <th>Total Commission</th>
 
 
 
-  <br />
-  <button type="submit" class="btn btn-primary">Submit</button>
-</form>
+
+                    </tr>
+                    </thead>
+
+     <tbody>
+                    {% for row in commission_data %}
+                    <tr>
+                    <td>{{row['customer_email']}}</td>
+                         <td>{{row['commission']}}</td>
+
+
+                    </tr>
+
+                    {% endfor %}
+                    </tbody>
+
+    </table>
+
+
+
 
 <a class="btn btn-primary" href="{{ url_for('booking_agent_home')}}" role="button">Back Home</a>
 

@@ -540,7 +540,7 @@ def booking_agent_viewtopcustomers():
 		print(ticket_data)
 		print(commission_data)
 
-	return render_template('booking_agent_viewtopcustomers.html')
+	return render_template('booking_agent_viewtopcustomers.html', ticket_data = ticket_data, commission_data = commission_data)
 
 
 
@@ -943,7 +943,7 @@ def view_reports():
 		print(bardata)
 
 
-	return render_template('view_reports.html', data=data, permission=permissions)
+	return render_template('view_reports.html', data=data, permission=permissions, bardata=bardata)
 
 @app.route('/compare_revenue_earned', methods=['GET','POST'])
 def compare_revenue_earned():
@@ -958,9 +958,8 @@ def compare_revenue_earned():
 		if request.method == 'POST':
 			print('posting')
 			default = int(request.form.get('duration'))
-			the_date = request.form.get('starting_date')
-			the_date = datetime.strptime(the_date, '%Y-%m-%d')
-			the_date = the_date + relativedelta(months=-default)
+			the_date = date.today() + relativedelta(months=-default)
+
 
 
 
@@ -975,6 +974,8 @@ def compare_revenue_earned():
 		cur.execute(query_agent)
 		data_agent = cur.fetchone()
 		print(data_agent)
+
+
 
 
 
