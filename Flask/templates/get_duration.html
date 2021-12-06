@@ -1,35 +1,33 @@
-{% extends 'base.html' %}
-{% block content %}
-
-<table class="table table-striped">
-    <thead>
-                    <tr>
-
-                        <th>Number of Tickets Sold</th>
-
-                    </tr>
-                    </thead>
-
-     <tbody>
-                    {% for row in data %}
-                    <tr>
-                    <td>{{row['number_sold']}}</td>
-
-
-                    </tr>
+{% extends "base.html" %} {% block title %}Sign Up{% endblock %} {% block
+content %}
 
 
 
 
-                    {% endfor %}
-                    </tbody>
+{% if loginType == 'agent' %}
+<h3 align="center">Hi Agent</h3>
+<form method="POST" action="{{url_for('booking_agent_viewcommission')}}">
 
-    </table>
+
+    {% elif loginType == 'staff' %}
+    <h3 align="center">Hi Staff</h3>
+    <form method="POST" action="{{url_for('staff_view_flights')}}">
+
+        {% else %}
+        <h3 align="center">Hi Customer</h3>
+        <form method="POST" action="{{url_for('customer_trackmyspending')}}">
+
+        {% endif %}
 
 
-<br />
 
-<form method="post">
+
+
+
+
+   <br />
+
+
 
 <div class="form-group">
     <label for="starting_date">Input Value Here in YYYY-MM-DD</label>

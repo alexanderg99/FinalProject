@@ -3,10 +3,15 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired
 import re
-from datetime import date
+from datetime import date,datetime
 import pymysql.cursors
 import random
+from dateutil.relativedelta import relativedelta
 
+
+
+
+# change the global variables every time a user logs in!!!!!
 # global variables that are used to control search results. some of the functions belonging to different user types render the same html page.
 userPrimaryKey = None
 loginType = None
@@ -45,9 +50,12 @@ cnx = pymysql.connect(
 
 
 
+
 #route create
 @app.route('/')
 def index():
+
+
 
 #reset all global variables
 
@@ -60,6 +68,7 @@ def index():
 	loginType = None
 	permissions = None
 	airline = None
+
 
 	#cursor.execute('''INSERT INTO airline VALUES ('Sam')''')
 	return render_template('index.html')
@@ -324,14 +333,12 @@ def customer_purchasetickets(flight):
 
 
 				today = date.today()
-				today = today.strftime("%m-%d-%y")
+				today = today.strftime("%Y-%m-%d")
 				ticket_ID = data['ticket_ID']
 				email = userPrimaryKey
 
 				if loginType == 'agent':
-
 					#redirect agent to enter the customer email
-
 					return render_template('booking_agent_purchasing.html',ticket_ID=ticket_ID,today=today)
 
 					#return booking_agent_purchasing(ticket_ID,today)
@@ -351,6 +358,7 @@ def customer_purchasetickets(flight):
 
 @app.route('/customer_ticketspurchased')
 def customer_ticketspurchased(message):
+	#the generic message for most use cases. was too lazyto rename also.
 	return render_template('customer_ticketspurchased.html', message=message, loginType = loginType)
 
 
@@ -361,10 +369,13 @@ def customer_searchforflights():
 	input_value = None
 
 	if request.method == 'POST':
+
+		# this is here to define criteria for use in sql after customer enters their criterias. this needs to be here above the 2nd post
+		# in order for the if-else statement below to work.
 		criteria = request.form.get('criteria')
 		input_value = request.form.get('input_value')
 
-		print  ("AAAAAAAAAA1")
+
 
 
 	with cnx.cursor() as cur:
@@ -381,6 +392,8 @@ def customer_searchforflights():
 		data = cur.fetchall()
 
 
+
+
 		if request.method == 'POST' and request.form.get('flight_num'):
 
 			print("Yayayaya")
@@ -389,6 +402,9 @@ def customer_searchforflights():
 
 
 			if permissions == 'Operator':
+
+				#operator - airline staff. used to change status. they have a different submit button on the html.
+
 
 
 				airline_name = request.form.get('airline_name')
@@ -402,16 +418,54 @@ def customer_searchforflights():
 
 	return render_template('customer_searchforflights.html', data=data, loginType = loginType)
 
-@app.route('/customer_trackmyspending')
+
+@app.route('/get_duration',methods = ['GET','POST'])
+def get_duration():
+	return render_template("get_duration.html")
+
+
+
+@app.route('/customer_trackmyspending',methods = ['GET','POST'])
 def customer_trackmyspending():
 	with cnx.cursor() as cur:
-		query = "SELECT sum(flight.price) FROM ticket natural join purchases natural join flight WHERE purchases.customer_email = '{}'".format(userPrimaryKey)
+		last_year = date.today() + relativedelta(months=-12)
+
+		query = "SELECT sum(flight.price) FROM ticket natural join purchases natural join flight WHERE purchases.customer_email = '{}' and purchases.purchase_date < '{}'".format(userPrimaryKey,last_year)
 		cur.execute(query)
 		data = cur.fetchall()
 		total = data
 
+		bardata = dict()
 
-	return render_template('customer_trackmyspending.html', data=data[0]['sum(flight.price)'])
+		default = 6
+		the_date = date.today()
+
+		if request.method == 'POST':
+			default = int(request.form.get('duration'))
+			the_date = request.form.get('starting_date')
+			the_date = datetime.strptime(the_date, '%Y-%m-%d')
+			print(the_date)
+
+		for i in range(default):
+			month_x_axis = (the_date + relativedelta(months=-i)).month
+			year_x_axis = (the_date + relativedelta(months=-i)).year
+			x_axis = str(month_x_axis) + "/" + str(year_x_axis)
+			query2 = "SELECT sum(flight.price) as month_spend FROM ticket natural join purchases natural join flight WHERE purchases.customer_email = '{}' and MONTH(purchases.purchase_date) = '{}' and YEAR(purchases.purchase_date) = '{}'".format(userPrimaryKey, month_x_axis, year_x_axis)
+			cur.execute(query2)
+			month_data = cur.fetchall()
+			bardata[x_axis] = month_data
+
+		print(bardata)
+
+
+
+
+
+
+
+
+
+	return render_template('customer_trackmyspending.html', data=data[0]['sum(flight.price)'], bardata=bardata)
 
 
 @app.route('/customer_viewmyflights', methods = ['GET','POST'])
@@ -459,7 +513,7 @@ def booking_agent_home():
 	global loginType
 	global airline
 
-
+	#the global values should be changed each login. below are dummy values used for development and testing
 	userPrimaryKey = 'harrao@gmail.com'
 	loginType = 'agent'
 	with cnx.cursor() as cur:
@@ -472,14 +526,58 @@ def booking_agent_home():
 
 	return render_template('booking_agent_home.html', name='Chris')
 
-@app.route('/booking_agent_viewcommission')
+@app.route('/booking_agent_viewtopcustomers',methods = ['GET','POST'])
+def booking_agent_viewtopcustomers():
+	six_months_ago = date.today() + relativedelta(months=-6)
+	one_year_ago = date.today() + relativedelta(months=-12)
+	with cnx.cursor() as cur:
+		query_ticketsbought = " select customer_email,count(*) from purchases natural join booking_agent where booking_agent.email = '{}' and purchases.purchase_date <= '{}' and purchases.purchase_date > '{}' group by customer_email order by count(*) desc limit 5;".format(userPrimaryKey, date.today(),six_months_ago)
+		cur.execute(query_ticketsbought)
+		ticket_data = cur.fetchall()
+
+
+		query_commission = "select purchases.customer_email,sum(flight.price)*0.1 as commission from purchases natural join booking_agent natural join flight natural join ticket where booking_agent.email = '{}' and purchases.purchase_date > '{}' and purchases.purchase_date <= '{}' group by purchases.customer_email order by count(*) desc limit 5;".format(userPrimaryKey, one_year_ago, date.today())
+		cur.execute(query_commission)
+		commission_data = cur.fetchall()
+
+		print(ticket_data)
+		print(commission_data)
+
+	return render_template('booking_agent_viewtopcustomers.html')
+
+
+
+@app.route('/booking_agent_viewcommission',methods = ['GET','POST'])
 def booking_agent_viewcommission():
+	#assuming commission is 10% of ticket price.
+
+	default = 6
+	the_date = date.today()
 
 	with cnx.cursor() as cur:
 
-		query_email = "select sum(flight.price)*0.1 as total_commission, sum(flight.price)/300 as average_commission,  count(*) as salecount from purchases natural join booking_agent natural join flight natural join ticket where booking_agent.email = '{}' group by booking_agent.email".format(userPrimaryKey)
-		cur.execute(query_email)
-		data = cur.fetchall()
+		if request.method == 'POST':
+			default = int(request.form.get('duration'))
+			the_date = request.form.get('starting_date')
+			the_date = datetime.strptime(the_date, '%Y-%m-%d')
+			start_date = the_date + relativedelta(months=-default)
+
+			print(the_date)
+			number_days = default * 30
+			query_email = "select sum(flight.price)*0.1 as total_commission, sum(flight.price)/{} as average_commission,  count(*) as salecount from purchases natural join booking_agent natural join flight natural join ticket where booking_agent.email = '{}' and purchases.purchase_date > '{}' and purchases.purchase_date < '{}' group by booking_agent.email ".format(
+				number_days,userPrimaryKey, start_date, the_date)
+
+			cur.execute(query_email)
+			data = cur.fetchall()
+			print(data)
+
+		else:
+
+
+			query_email = "select sum(flight.price)*0.1 as total_commission, sum(flight.price)/300 as average_commission,  count(*) as salecount from purchases natural join booking_agent natural join flight natural join ticket where booking_agent.email = '{}' group by booking_agent.email".format(userPrimaryKey)
+			cur.execute(query_email)
+			data = cur.fetchall()
+			print(data)
 
 
 
@@ -515,7 +613,9 @@ def booking_agent_viewmyflights():
 
 		print(type(data))
 		print(data)
-	return render_template('customer_viewmyflights.html', data=data )
+	return render_template('customer_viewmyflights.html', data=data)
+
+
 
 
 @app.route('/booking_agent_purchasing',methods = ['GET','POST'])
@@ -525,7 +625,6 @@ def booking_agent_purchasing():
 
 
 		if request.form.get('customer_email'):
-			print("Harraozzzz")
 			with cnx.cursor() as cur:
 				email = request.form.get('customer_email')
 				ticket_ID = request.form.get('ticket_ID')
@@ -559,7 +658,7 @@ def booking_agent_purchasing():
 
 				message = 'You have helped user with email {} buy the ticket! Your ticket number is {}'.format(email,
 																									  ticket_ID)
-
+			#custticketspurhcased is the default landing after success.
 
 			return customer_ticketspurchased(message)
 	#return render_template('booking_agent_purchasing.html')
@@ -804,30 +903,64 @@ def view_customers():
 
 @app.route('/view_reports', methods=['GET','POST'])
 def view_reports():
-	if loginType == 'staff':
-		with cnx.cursor() as cur:
 
+	with cnx.cursor() as cur:
 
-			query = "SELECT sum(flight.price) as sales FROM ticket natural join purchases natural join flight WHERE ticket.airline_name = '{}'".format(airline)
-			print(airline)
-			cur.execute(query)
+		default=12
+		the_date = date.today()
+		bardata = dict()
+
+		if request.method == 'POST':
+			print('posting')
+			default = int(request.form.get('duration'))
+			the_date = request.form.get('starting_date')
+			the_date = datetime.strptime(the_date, '%Y-%m-%d')
+			start_date = the_date + relativedelta(months=-default)
+
+			print(the_date)
+
+			query_email = "select count(*) as number_sold from purchases natural join flight natural join ticket where flight.airline_name = '{}' and purchases.purchase_date > '{}' and purchases.purchase_date <= '{}'".format(
+				airline, start_date, the_date)
+
+			cur.execute(query_email)
 			data = cur.fetchall()
 			print(data)
+
+		else:
+
+			query_email = "select count(*) as number_sold from purchases natural join flight natural join ticket where flight.airline_name = '{}'".format(
+				airline)
+			cur.execute(query_email)
+			data = cur.fetchall()
+			print(data)
+
+		for i in range(default):
+			month_x_axis = (the_date + relativedelta(months=-i)).month
+			year_x_axis = (the_date + relativedelta(months=-i)).year
+			x_axis = str(month_x_axis) + "/" + str(year_x_axis)
+			query2 = "SELECT count(*) as number_sold FROM ticket natural join purchases natural join flight WHERE flight.airline_name = '{}' and MONTH(purchases.purchase_date) = '{}' and YEAR(purchases.purchase_date) = '{}'".format(airline, month_x_axis, year_x_axis)
+			cur.execute(query2)
+			month_data = cur.fetchall()
+			bardata[x_axis] = month_data
+
+		print(bardata)
 
 
 	return render_template('view_reports.html', data=data, permission=permissions)
 
 @app.route('/compare_revenue_earned', methods=['GET','POST'])
 def compare_revenue_earned():
-	if loginType == 'staff':
-		with cnx.cursor() as cur:
+
+	with cnx.cursor() as cur:
 
 
-			query = "SELECT sum(flight.price) as sales FROM ticket natural join purchases natural join flight WHERE ticket.airline_name = '{}'".format(airline)
-			print(airline)
-			cur.execute(query)
-			data = cur.fetchall()
-			print(data)
+		query = "SELECT sum(flight.price) as sales FROM ticket natural join purchases natural join flight WHERE ticket.airline_name = '{}'".format(airline)
+		print(airline)
+		cur.execute(query)
+		data = cur.fetchall()
+		print(data)
+
+
 
 
 	return render_template('compare_revenue_earned.html', data=data, permission=permissions)
@@ -906,11 +1039,6 @@ def add_agents():
 
 
 	return render_template('view_agents.html', data=data, redir=add_agents)
-
-
-
-
-
 
 
 
