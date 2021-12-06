@@ -8,12 +8,15 @@
     <canvas id="myChart" width="400" height="400">The Canvas</canvas>
 
 
-    <a class="btn btn-primary" href="{{ url_for('get_duration')}}" role="button">Specific Search</a>
 
-
-    <h1>You spent ${{data}}</h1>
 </head>
 <body>
 
+<a class="btn btn-primary" href="{{ url_for('get_duration')}}" role="button">Specific Search</a>
+
+
+    <h1>You spent ${{data}}</h1>
+
+<a class="btn btn-primary" href="{{ url_for('customer_home')}}" role="button">Back Home</a>
 </body>
 </html>

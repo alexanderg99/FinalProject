@@ -45,6 +45,14 @@
 
 
         </table>
+{% if loginType == 'agent' %}
+    <a class="btn btn-primary" href="{{ url_for('booking_agent_home')}}" role="button">Back Home</a>
+{% elif permission %}
+<a class="btn btn-primary" href="{{ url_for('airline_staff_home')}}" role="button">Back Home</a>
 
-<a class="btn btn-primary" href="{{ url_for('customer_home')}}" role="button">Specific Search</a>
+    {% else %}
+    <a class="btn btn-primary" href="{{ url_for('customer_home')}}" role="button">Back Home</a>
+     {% endif %}
+
+
 {% endblock %}

@@ -85,10 +85,7 @@ def search():
 		cur.execute(query)
 		data = cur.fetchall()
 
-	return render_template('customer_searchforflights.html', data=data, loginType=loginType)
-
-
-
+	return render_template('customer_searchforflights.html', data=data, loginType=loginType, default= True)
 
 
 
@@ -601,19 +598,18 @@ def booking_agent_viewmyflights():
 
 	with cnx.cursor() as cur:
 
-		print(criteria)
-		print(input_value)
+
 		if criteria == None and input_value == None:
-			query = "SELECT * FROM flight natural join ticket natural join purchases WHERE purchases.booking_agent_id = '{}'".format(user)
+			query = "SELECT * FROM flight natural join ticket natural join purchases natural join booking_agent WHERE booking_agent.email = '{}'".format(user)
 		else:
-			query = "SELECT * FROM flight natural join ticket natural join purchases WHERE purchases.booking_agent_id = '{}' and flight.{} = '{}'".format(
+			query = "SELECT * FROM flight natural join ticket natural join purchases natural join booking_agent WHERE booking_agent.email = '{}' and flight.{} = '{}'".format(
 				user, criteria, input_value)
 		cur.execute(query)
 		data = cur.fetchall()
 
 		print(type(data))
 		print(data)
-	return render_template('customer_viewmyflights.html', data=data)
+	return render_template('customer_viewmyflights.html', data=data, loginType=loginType)
 
 
 
