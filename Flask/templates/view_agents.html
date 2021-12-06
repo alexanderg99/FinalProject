@@ -3,9 +3,15 @@
 
 
 <form method="POST" action="{{url_for('view_agents')}}">
-
-                            <button type="submit" class="btn btn-primary">Last 5 years</button>
+    <input type="hidden" name="duration" value=5>
+    <button type="submit" class="btn btn-primary">Last 5 months</button>
 </form>
+
+<form method="POST" action="{{url_for('view_agents')}}">
+    <input type="hidden" name="duration" value=12>
+    <button type="submit" class="btn btn-primary">Last 12 months</button>
+</form>
+
 
 
 <table class="table table-striped">

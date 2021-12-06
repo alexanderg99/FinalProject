@@ -861,28 +861,29 @@ def staff_view_flights():
 @app.route('/view_agents', methods=['GET','POST'])
 def view_agents():
 
+	one_year_ago = date.today() + relativedelta(months=-12)
+
+
 	if request.method == "POST":
-		date = '2017-12-12'
-		sort_query = "select booking_agent.email, sum(flight.price) as sales from ticket natural join booking_agent_work_for natural join flight natural join purchases natural join booking_agent where booking_agent_work_for.airline_name = '{}' and purchases.booking_agent_id is not null and purchases.purchase_date > '{}' group by booking_agent.email order by sales desc limit 5;".format(airline,date)
+
+
+
+
+		duration = int(request.form.get('duration'))
+		modified_date = date.today() + relativedelta(months=-duration)
+		sort_query = "select purchases.booking_agent_id, sum(flight.price) as sales from ticket natural join flight natural join purchases where flight.airline_name = '{}' and purchases.booking_agent_id is not null and purchases.purchase_date > '{}' group by purchases.booking_agent_id order by sales desc limit 5;".format(airline,modified_date)
 		with cnx.cursor() as cur:
 			cur.execute(sort_query)
 			data = cur.fetchall()
 			return render_template('view_agents.html', data=data, permission=permissions)
 
-	if loginType == 'staff':
-		with cnx.cursor() as cur:
-			query = "SELECT * FROM booking_agent natural join booking_agent_work_for WHERE airline_name = '{}'".format(airline)
-			cur.execute(query)
-			data = cur.fetchall()
 
-
-
+	with cnx.cursor() as cur:
+		query = "select purchases.booking_agent_id, sum(flight.price) as sales from ticket natural join flight natural join purchases where flight.airline_name = '{}' and purchases.booking_agent_id is not null and purchases.purchase_date > '{}' group by purchases.booking_agent_id order by sales desc limit 5;".format(airline,one_year_ago)
+		cur.execute(query)
+		data = cur.fetchall()
 
 	return render_template('view_agents.html', data=data, permission=permissions)
-
-
-
-
 
 
 @app.route('/view_customers', methods=['GET','POST'])
@@ -953,17 +954,35 @@ def compare_revenue_earned():
 
 	with cnx.cursor() as cur:
 
-
-		query = "SELECT sum(flight.price) as sales FROM ticket natural join purchases natural join flight WHERE ticket.airline_name = '{}'".format(airline)
-		print(airline)
-		cur.execute(query)
-		data = cur.fetchall()
-		print(data)
+		default=12
+		the_date = date.today() + relativedelta(months=-default)
 
 
 
+		if request.method == 'POST':
+			print('posting')
+			default = int(request.form.get('duration'))
+			the_date = request.form.get('starting_date')
+			the_date = datetime.strptime(the_date, '%Y-%m-%d')
+			the_date = the_date + relativedelta(months=-default)
 
-	return render_template('compare_revenue_earned.html', data=data, permission=permissions)
+
+
+		query_customer = "SELECT sum(flight.price) as sales FROM ticket natural join flight natural join purchases WHERE ticket.airline_name = '{}' and purchases.booking_agent_id is null and purchases.purchase_date > '{}'".format(
+			airline, the_date)
+		query_agent = "SELECT sum(flight.price) as sales FROM ticket natural join purchases natural join flight WHERE ticket.airline_name = '{}' and purchases.booking_agent_id is not null and purchases.purchase_date > '{}'".format(
+			airline, the_date)
+
+		cur.execute(query_customer)
+		data_customer = cur.fetchone()
+		print(data_customer)
+		cur.execute(query_agent)
+		data_agent = cur.fetchone()
+		print(data_agent)
+
+
+
+	return render_template('compare_revenue_earned.html', data_agent = data_agent['sales'], data_customer = data_customer['sales'], permission=permissions)
 
 
 

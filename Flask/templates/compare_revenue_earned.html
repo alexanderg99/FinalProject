@@ -1,27 +1,38 @@
 {% extends 'base.html' %}
 {% block content %}
 
+<form method="POST">
+    <input type="hidden" name="duration" value=12>
+    <button type="submit" class="btn btn-primary">Last 12 months</button>
+</form>
+
+<form method="POST">
+    <input type="hidden" name="duration" value=1>
+    <button type="submit" class="btn btn-primary">Last 1 months</button>
+</form>
+
 <table class="table table-striped">
     <thead>
                     <tr>
 
-                        <th>Sales</th>
+                        <th>Customer</th>
+                        <th>Agent</th>
 
                     </tr>
                     </thead>
 
      <tbody>
-                    {% for row in data %}
+
                     <tr>
-                    <td>{{row['sales']}}</td>
-
-
+                    <td>{{data_customer}}</td>
+                        <td>{{data_agent}}</td>
                     </tr>
 
 
 
 
-                    {% endfor %}
+
+
                     </tbody>
 
     </table>
