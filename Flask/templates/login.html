@@ -1,33 +1,28 @@
-{% extends 'base.html' %}
+{% extends "base.html" %} {% block title %}Sign Up{% endblock %} {% block
+content %}
 
-{% block content %}
 
-{% if name %}
-	<h1>Welcome back, {{name}}</h1>
-{% else %}
-	<h1>User Login</h1>
-	<br/>
-	<form method='POST'>
-		{{ form.hidden_tag() }}
+<form method="POST">
+  <h3 align="center">Sign Up</h3>
 
-		{{ form.name.label(class="form-label") }}
-		{{ form.name(class="form-control") }}
-		<br/>
-		{{ form.password.label(class="form-label") }}
-		{{ form.password(type="password", class="form-control") }}
-		<br/>
 
-	</form>
+
+   <br />
+
+  <select class="form-select" aria-label="Default select example" name="LoginType" id="LoginType">
+  <option selected>Select Login Type</option>
+  <option value="1">Customer</option>
+  <option value="2">Booking Agent</option>
+  <option value="3">Flight</option>
 
 
 
 
+</select>
 
-		<br/>
 
-			<form>
-		{{ form.submit(class="btn btn-primary") }}
-	</form>
-{% endif %}
 
+  <br />
+  <button type="submit" class="btn btn-primary">Submit</button>
+</form>
 {% endblock %}

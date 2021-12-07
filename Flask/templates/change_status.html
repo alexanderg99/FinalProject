@@ -5,9 +5,20 @@ content %}
 <form method="POST"  action="{{url_for('change_status')}}">
   <h3 align="center">New Status</h3>
 
-
-
    <br />
+
+
+    <div class="form-group">
+    <label for="flight_num">Flight Number</label>
+    <input
+      type="text"
+      class="form-control"
+      id="flight_num"
+      name="flight_num"
+      placeholder="Enter flight number"
+    />
+  </div>
+
 
   <select class="form-select" aria-label="Default select example" name="new_status" id="LoginType">
   <option selected>Select New Status</option>

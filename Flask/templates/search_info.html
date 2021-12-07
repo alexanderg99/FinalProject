@@ -15,6 +15,11 @@ content %}
     <h3 align="center">Hi Staff</h3>
     <form method="POST" action="{{url_for('staff_view_flights')}}">
 
+        {% elif not user %}
+    <h3 align="center">Hi Hello</h3>
+    <form method="POST" action="{{url_for('search')}}">
+
+
         {% else %}
         <h3 align="center">Hi Customer</h3>
         <form method="POST" action="{{url_for('customer_viewmyflights')}}">

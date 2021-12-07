@@ -1,38 +1,58 @@
-
-
 {% extends 'base.html' %}
 {% block content %}
 
+<a class="btn btn-primary" href="{{ url_for('search_info')}}" role="button">Search Upcoming Flights</a>
+
+
+<a class="btn btn-primary" href="{{ url_for('flight_info')}}" role="button">Search Flight Status</a>
+
+
 <table class="table table-striped">
-  <thead>
-    <tr>
-      <th scope="col">#</th>
-      <th scope="col">First</th>
-      <th scope="col">Last</th>
-      <th scope="col">Handle</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th scope="row">1</th>
-      <td>Mark</td>
-      <td>Otto</td>
-      <td>@mdo</td>
-    </tr>
-    <tr>
-      <th scope="row">2</th>
-      <td>Jacob</td>
-      <td>Thornton</td>
-      <td>@fat</td>
-    </tr>
-    <tr>
-      <th scope="row">3</th>
-      <td>Larry</td>
-      <td>the Bird</td>
-      <td>@twitter</td>
-    </tr>
-  </tbody>
-</table>
+    <thead>
+                    <tr>
+                    <th>Airline Name</th>
+                    <th>Flight Num</th>
+                    <th>Departure Airport</th>
+                    <th>Departure Time</th>
+                        <th>Arrival Airport</th>
+                        <th>Arrival Time</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th>Airplane ID</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    {% for row in data %}
+                    <tr>
+                    <td>{{row['airline_name']}}</td>
+                    <td>{{row['flight_num']}}</td>
+                    <td>{{row['departure_airport']}}</td>
+                    <td>{{row['departure_time']}}</td>
+                    <td>{{row['arrival_airport']}}</td>
+                        <td>{{row['arrival_time']}}</td>
+                        <td>{{row['price']}}</td>
+                        <td>{{row['status']}}</td>
+                        <td>{{row['airplane_id']}}</td>
+
+
+
+
+                    </tr>
+
+
+
+
+                    {% endfor %}
+                    </tbody>
+
+     </table>
+
+
+    <a class="btn btn-primary" href="{{ url_for('index')}}" role="button">Back Home</a>
+
+
+
 
 
 {% endblock %}

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, flash, redirect, url_for
+from flask import Flask, render_template, request, flash, redirect, url_for, Markup, session
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired
@@ -7,6 +7,18 @@ from datetime import date,datetime
 import pymysql.cursors
 import random
 from dateutil.relativedelta import relativedelta
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+from flask import Response
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
+import io
+
+
+
+
 
 
 
@@ -77,15 +89,30 @@ def index():
 @app.route('/search', methods=['GET', 'POST'])
 def search():
 
+	criteria = None
+	input_value = None
+
+	if request.method == 'POST':
+		if request.form.get('criteria') and request.form.get('input_value'):
+			criteria = request.form.get('criteria')
+			input_value = request.form.get('input_value')
+			query = "select * from flight where status = 'Upcoming' and flight.{}='{}'".format(criteria,input_value)
+			with cnx.cursor() as cur:
+				cur.execute(query)
+				data = cur.fetchall()
+			return render_template('search.html', data=data, loginType=loginType, default=True)
+		else:
+			query = "select * from flight where status = 'Upcoming' and flight.{}='{}'".format(criteria, input_value)
+
 
 
 	with cnx.cursor() as cur:
-		query = "select * from flight where status = 'Upcoming'"
+		query = "select * from flight"
 
 		cur.execute(query)
 		data = cur.fetchall()
 
-	return render_template('customer_searchforflights.html', data=data, loginType=loginType, default= True)
+	return render_template('search.html', data=data, loginType=loginType, default= True)
 
 
 
@@ -97,10 +124,18 @@ def purchase_info():
 
 	return render_template("purchase_info.html", loginType=loginType)
 
+@app.route('/flight_info', methods=['GET', 'POST'])
+def flight_info():
+
+	#to specify based on airports, etc as per project page. redirected from view my flight
+
+	return render_template("flight_info.html", loginType=loginType)
+
+
 @app.route('/search_info', methods=['GET', 'POST'])
 def search_info():
 	# to specify based on airports, etc as per project page. redirected from search/purchase.
-	return render_template("search_info.html", loginType=loginType)
+	return render_template("search_info.html", loginType=loginType, user=userPrimaryKey)
 
 
 
@@ -118,29 +153,176 @@ class register(FlaskForm):
 	submit = SubmitField("Submit")
 
 #login page
+# Creates route to Login of users and Dropdown
 @app.route('/login', methods=['GET', 'POST'])
 def login():
 
-	if request.method == 'POST':
-
-		#loginType is from the html.
 		loginType = request.form.get('LoginType')
 
 		if loginType == "1":
 
-			return redirect(url_for('register_customer'))
+			return redirect(url_for('login_customer'))
 
 		elif loginType == "2":
-			return redirect(url_for('register_agent'))
+			return redirect(url_for('login_agent'))
 
 		elif loginType == "3":
+			return redirect(url_for('login_staff'))
 
-			return redirect(url_for('register_staff'))
+		return render_template('login.html')
+
+
+# Default Logout route, fixes errors for bugs with navbar so you can logout
+@app.route('/logout')
+def logout():
+	if "customer" in session:
+		return redirect(url_for('customer_logout'))
+	elif "booking_agent" in session:
+		return redirect(url_for('agent_logout'))
+	elif "staff" in session:
+		return redirect(url_for('staff_logout'))
+	return redirect(url_for('index'))
+
+
+# Creates Logout function for Customers
+@app.route('/customer_logout')
+def customer_logout():
+	session.pop("customer", None)
+	return redirect(url_for('index'))
+
+
+# Creates Logout function for Booking Agents
+@app.route('/agent_logout')
+def agent_logout():
+	session.pop("booking_agent", None)
+	return redirect(url_for('index'))
+
+
+# Creates Logout function for Airline Staff
+@app.route('/staff_logout')
+def staff_logout():
+	session.pop("staff", None)
+	return redirect(url_for('index'))
+
+
+# Creates Login page for customers and creates session for successful logins
+@app.route('/login_customer', methods=['GET', 'POST'])
+def login_customer():
+	if request.method == 'POST':
+		email = request.form.get('email')
+		password = request.form.get('password')
+
+		with cnx.cursor() as cur:
+			query = "SELECT email, password FROM customer WHERE email = '{}'".format(email)
+			cur.execute(query)
+			data = cur.fetchone()
+
+			print(data)
+
+			if not (data):
+				error = Markup('<p>User not found</p>')
+				flash(error)
+			else:
+				if data['password'] != password:
+
+					print(data['password'], password, 'Not mathc')
+
+					error = Markup('<p>Incorrect Password</p>')
+					flash(error)
+				else:
+					global userPrimaryKey
+					userPrimaryKey = data['email']
+					print('Login Sucess')
+					return redirect(url_for('customer_home'))
+	return render_template('login_customer.html')
+
+
+# Creates Login page for Booking Agents and creates session for successful logins
+@app.route('/login_agent', methods=['GET', 'POST'])
+def login_agent():
+	if request.method == 'POST':
+		email = request.form.get('email')
+		password = request.form.get('password')
+
+		with cnx.cursor() as cur:
+			query = "SELECT email, password FROM booking_agent WHERE email = '{}'".format(email)
+			cur.execute(query)
+			data = cur.fetchone()
+
+			query_airline = "SELECT airline_name FROM booking_agent_work_for WHERE email = '{}'".format(email)
+			cur.execute(query_airline)
+			data_airline = cur.fetchone()
 
 
 
 
-	return render_template('register.html')
+			if not (data):
+				error = Markup('<p>User not found</p>')
+				flash(error)
+			else:
+				if data['password'] != password:
+					error = Markup('<p>Incorrect Password</p>')
+					flash(error)
+				else:
+					global userPrimaryKey
+					global airline
+					global loginType
+
+
+					userPrimaryKey = data['email']
+
+					if not data_airline:
+						airline = None
+					else:
+						airline = data_airline['airline_name']
+
+
+
+					loginType = 'agent'
+
+					print('Login Sucess')
+
+
+					return redirect(url_for('booking_agent_home'))
+	return render_template('login_agent.html')
+
+
+# Creates Login page for Airline Staff and creates session for successful logins
+@app.route('/login_staff', methods=['GET', 'POST'])
+def login_staff():
+	if request.method == 'POST':
+		username = request.form.get('email')
+		password = request.form.get('password')
+
+		with cnx.cursor() as cur:
+			query = "SELECT username, password,airline_name FROM airline_staff WHERE username = '{}'".format(username)
+			cur.execute(query)
+			data = cur.fetchone()
+			if not (data):
+				error = Markup('<p>User not found</p>')
+				flash(error)
+			else:
+				if data['password'] != password:
+					error = Markup('<p>Incorrect Password</p>')
+					flash(error)
+				else:
+
+					global userPrimaryKey
+					global loginType
+					global airline
+					global permissions
+
+					airline = data['airline_name']
+					userPrimaryKey = data['username']
+					loginType = 'staff'
+
+					query = "SELECT permission_type FROM permission WHERE username = '{}'".format(username)
+					cur.execute(query)
+					permission = cur.fetchone()
+					permissions = permission['permission_type']
+
+					return redirect(url_for('airline_staff_home', permissions=permissions, name=username))
+	return render_template('login_staff.html')
 
 
 @app.route('/registers',  methods=['GET', 'POST'])
@@ -301,9 +483,7 @@ def view_public_info():
 @app.route('/customer_home')
 def customer_home():
 
-	global userPrimaryKey
-	userPrimaryKey = 'coreychen@nyu.edu'
-	return render_template('customer_home.html', name='Corey Chen')
+	return render_template('customer_home.html', name=userPrimaryKey)
 
 
 @app.route('/customer_purchasetickets', methods = ['GET','POST'])
@@ -396,18 +576,15 @@ def customer_searchforflights():
 			print("Yayayaya")
 			flight_num = request.form.get('flight_num')
 
-
-
-			if permissions == 'Operator':
+			if permissions == 'Operator' or permissions == 'Both':
 
 				#operator - airline staff. used to change status. they have a different submit button on the html.
 
 
 
-				airline_name = request.form.get('airline_name')
-				print(airline_name)
+
 				print(flight_num)
-				return render_template('change_status.html',flight_num=flight_num,airline_name=airline_name)
+				return render_template('change_status.html',flight_num=flight_num,airline_name=airline)
 
 
 			#return redirect(url_for('customer_purchasetickets', flight= flight_num))
@@ -427,7 +604,7 @@ def customer_trackmyspending():
 	with cnx.cursor() as cur:
 		last_year = date.today() + relativedelta(months=-12)
 
-		query = "SELECT sum(flight.price) FROM ticket natural join purchases natural join flight WHERE purchases.customer_email = '{}' and purchases.purchase_date < '{}'".format(userPrimaryKey,last_year)
+		query = "SELECT sum(flight.price) FROM ticket natural join purchases natural join flight WHERE purchases.customer_email = '{}' and purchases.purchase_date >= '{}'".format(userPrimaryKey,last_year)
 		cur.execute(query)
 		data = cur.fetchall()
 		total = data
@@ -436,6 +613,8 @@ def customer_trackmyspending():
 
 		default = 6
 		the_date = date.today()
+		graph_x_axis_values= []
+		y_axis = []
 
 		if request.method == 'POST':
 			default = int(request.form.get('duration'))
@@ -445,24 +624,30 @@ def customer_trackmyspending():
 
 		for i in range(default):
 			month_x_axis = (the_date + relativedelta(months=-i)).month
+
 			year_x_axis = (the_date + relativedelta(months=-i)).year
 			x_axis = str(month_x_axis) + "/" + str(year_x_axis)
+			graph_x_axis_values.append(x_axis)
 			query2 = "SELECT sum(flight.price) as month_spend FROM ticket natural join purchases natural join flight WHERE purchases.customer_email = '{}' and MONTH(purchases.purchase_date) = '{}' and YEAR(purchases.purchase_date) = '{}'".format(userPrimaryKey, month_x_axis, year_x_axis)
 			cur.execute(query2)
 			month_data = cur.fetchall()
+			if month_data[0]['month_spend'] == None:
+				y_axis.append(0)
+			else:
+				y_axis.append(month_data[0]['month_spend'])
 			bardata[x_axis] = month_data
 
-		print(bardata)
+		print(graph_x_axis_values,y_axis)
+
+		plt.bar(graph_x_axis_values,y_axis)
+		plt.savefig('static/trackspending.png')
+		plt.clf()
+		plt.cla()
+		plt.close()
 
 
 
-
-
-
-
-
-
-	return render_template('customer_trackmyspending.html', data=data[0]['sum(flight.price)'], bardata=bardata)
+	return render_template('customer_trackmyspending.html', data=data[0]['sum(flight.price)'], bardata=bardata, graph='static/trackspending.png')
 
 
 @app.route('/customer_viewmyflights', methods = ['GET','POST'])
@@ -490,7 +675,7 @@ def customer_viewmyflights():
 
 		if criteria == None and input_value == None:
 
-			query = "SELECT distinct * FROM flight natural join ticket natural join purchases WHERE purchases.customer_email = '{}'".format(user)
+			query = "SELECT distinct * FROM flight natural join ticket natural join purchases WHERE purchases.customer_email = '{}' and flight.status = 'Upcoming'".format(user)
 
 		elif criteria:
 			query = "SELECT distinct * FROM flight natural join ticket natural join purchases WHERE purchases.customer_email = '{}' and flight.{} = '{}'".format(
@@ -501,48 +686,58 @@ def customer_viewmyflights():
 
 		print(type(data))
 		print(data)
-	return render_template('customer_viewmyflights.html', data=data)
+	return render_template('customer_viewmyflights.html', data=data, permission=permissions)
 
 
 @app.route('/booking_agent_home')
 def booking_agent_home():
-	global userPrimaryKey
-	global loginType
-	global airline
-
-	#the global values should be changed each login. below are dummy values used for development and testing
-	userPrimaryKey = 'harrao@gmail.com'
-	loginType = 'agent'
-	with cnx.cursor() as cur:
-
-		query_email = "select airline_name from booking_agent_work_for where email = '{}'".format(userPrimaryKey)
-		cur.execute(query_email)
-		data = cur.fetchall()
-		airline = data[0]['airline_name']
 
 
-	return render_template('booking_agent_home.html', name='Chris')
+
+	return render_template('booking_agent_home.html', name=userPrimaryKey)
 
 @app.route('/booking_agent_viewtopcustomers',methods = ['GET','POST'])
 def booking_agent_viewtopcustomers():
 	six_months_ago = date.today() + relativedelta(months=-6)
 	one_year_ago = date.today() + relativedelta(months=-12)
+	graph_x_axis_values_tickets = []
+	y_axis_values_tickets = []
+	graph_x_axis_values_commission = []
+	y_axis_values_commission = []
+
 	with cnx.cursor() as cur:
 		query_ticketsbought = " select customer_email,count(*) from purchases natural join booking_agent where booking_agent.email = '{}' and purchases.purchase_date <= '{}' and purchases.purchase_date > '{}' group by customer_email order by count(*) desc limit 5;".format(userPrimaryKey, date.today(),six_months_ago)
 		cur.execute(query_ticketsbought)
 		ticket_data = cur.fetchall()
+		for i in ticket_data:
+			graph_x_axis_values_tickets.append(i['customer_email'])
+			y_axis_values_tickets.append(i['count(*)'])
 
 
 		query_commission = "select purchases.customer_email,sum(flight.price)*0.1 as commission from purchases natural join booking_agent natural join flight natural join ticket where booking_agent.email = '{}' and purchases.purchase_date > '{}' and purchases.purchase_date <= '{}' group by purchases.customer_email order by count(*) desc limit 5;".format(userPrimaryKey, one_year_ago, date.today())
 		cur.execute(query_commission)
 		commission_data = cur.fetchall()
+		for i in commission_data:
+			graph_x_axis_values_commission.append(i['customer_email'])
+			y_axis_values_commission.append(i['commission'])
 
 		print(ticket_data)
 		print(commission_data)
 
-	return render_template('booking_agent_viewtopcustomers.html', ticket_data = ticket_data, commission_data = commission_data)
+	plt.bar(graph_x_axis_values_tickets, y_axis_values_tickets)
+	plt.savefig('static/ticketsbought.png')
+	plt.clf()
+	plt.cla()
+	plt.close()
+
+	plt.bar(graph_x_axis_values_commission, y_axis_values_commission)
+	plt.savefig('static/commission.png')
+	plt.clf()
+	plt.cla()
+	plt.close()
 
 
+	return render_template('booking_agent_viewtopcustomers.html', ticket_data = ticket_data, commission_data = commission_data, graph_ticket='static/ticketsbought.png',graph_commission='static/commission.png' )
 
 @app.route('/booking_agent_viewcommission',methods = ['GET','POST'])
 def booking_agent_viewcommission():
@@ -600,7 +795,7 @@ def booking_agent_viewmyflights():
 
 
 		if criteria == None and input_value == None:
-			query = "SELECT * FROM flight natural join ticket natural join purchases natural join booking_agent WHERE booking_agent.email = '{}'".format(user)
+			query = "SELECT * FROM flight natural join ticket natural join purchases natural join booking_agent WHERE booking_agent.email = '{}' and flight.status = 'Upcoming'".format(user)
 		else:
 			query = "SELECT * FROM flight natural join ticket natural join purchases natural join booking_agent WHERE booking_agent.email = '{}' and flight.{} = '{}'".format(
 				user, criteria, input_value)
@@ -664,38 +859,8 @@ def booking_agent_purchasing():
 
 @app.route('/airline_staff_home')
 def airline_staff_home():
-	global userPrimaryKey
-	global loginType
-	global airline
-	global permissions
 
-	airline = 'China Eastern'
-	userPrimaryKey = 'alexg99'
-	loginType = 'staff'
-
-	with cnx.cursor() as cur:
-		query = "SELECT airline_name from airline_staff where username = '{}'".format(userPrimaryKey)
-		cur.execute(query)
-		data = cur.fetchone()
-		airline = data['airline_name']
-
-
-
-	with cnx.cursor() as cur:
-		query = "SELECT permission_type from permission where username = '{}'".format(userPrimaryKey)
-		cur.execute(query)
-		data = cur.fetchone()
-		if data['permission_type'] == 'Admin':
-			permissions = 'Admin'
-		elif data['permission_type'] == 'Operator':
-			permissions = 'Operator'
-
-
-	if permissions:
-		return render_template('airline_staff_home.html', name=permissions)
-
-
-	return render_template('airline_staff_home.html', name='Alex G')
+	return render_template('airline_staff_home.html', name=permissions)
 
 @app.route('/create_flight', methods=['GET','POST'])
 def create_flight():
@@ -760,11 +925,15 @@ def add_airplane():
 
 	if request.method == 'POST':
 
-		airline_name = request.form.get('airline_name')
-		flight_ID = request.form.get('flight_ID')
+
+		flight_ID = request.form.get('airplane_ID')
 		seats = request.form.get('seats')
 
-		query = "INSERT INTO flight VALUES ('{}','{}','{}')".format(airline_name,flight_ID,seats)
+		print(flight_ID,seats)
+
+
+
+		query = "INSERT INTO airplane VALUES ('{}','{}','{}')".format(airline,flight_ID,seats)
 		with cnx.cursor() as cur:
 			cur.execute(query)
 
@@ -801,7 +970,7 @@ def change_status():
 
 	if request.method == 'POST':
 
-		airline_name = request.form.get('airline_name')
+		airline_name = airline
 		flight_number = request.form.get('flight_num')
 		new_status = request.form.get('new_status')
 
@@ -906,6 +1075,7 @@ def view_reports():
 		default=12
 		the_date = date.today()
 		bardata = dict()
+		start_date = the_date + relativedelta(months=-default)
 
 		if request.method == 'POST':
 			print('posting')
@@ -916,34 +1086,39 @@ def view_reports():
 
 			print(the_date)
 
-			query_email = "select count(*) as number_sold from purchases natural join flight natural join ticket where flight.airline_name = '{}' and purchases.purchase_date > '{}' and purchases.purchase_date <= '{}'".format(
-				airline, start_date, the_date)
+		query_email = "select count(*) as number_sold from purchases natural join flight natural join ticket where flight.airline_name = '{}' and purchases.purchase_date > '{}' and purchases.purchase_date <= '{}'".format(
+			airline, start_date, the_date)
 
-			cur.execute(query_email)
-			data = cur.fetchall()
-			print(data)
+		cur.execute(query_email)
+		data = cur.fetchall()
+		print(data)
 
-		else:
-
-			query_email = "select count(*) as number_sold from purchases natural join flight natural join ticket where flight.airline_name = '{}'".format(
-				airline)
-			cur.execute(query_email)
-			data = cur.fetchall()
-			print(data)
+		graph_x_axis_values = []
+		y_axis = []
 
 		for i in range(default):
 			month_x_axis = (the_date + relativedelta(months=-i)).month
 			year_x_axis = (the_date + relativedelta(months=-i)).year
 			x_axis = str(month_x_axis) + "/" + str(year_x_axis)
+			graph_x_axis_values.append(x_axis)
 			query2 = "SELECT count(*) as number_sold FROM ticket natural join purchases natural join flight WHERE flight.airline_name = '{}' and MONTH(purchases.purchase_date) = '{}' and YEAR(purchases.purchase_date) = '{}'".format(airline, month_x_axis, year_x_axis)
 			cur.execute(query2)
 			month_data = cur.fetchall()
+			y_axis.append(month_data[0]['number_sold'])
 			bardata[x_axis] = month_data
+
+		print(graph_x_axis_values, y_axis)
+
+		plt.bar(graph_x_axis_values, y_axis)
+		plt.savefig('static/viewreport.png')
+		plt.clf()
+		plt.cla()
+		plt.close()
 
 		print(bardata)
 
 
-	return render_template('view_reports.html', data=data, permission=permissions, bardata=bardata)
+	return render_template('view_reports.html', data=data, permission=permissions, bardata=bardata, graph='static/viewreport.png')
 
 @app.route('/compare_revenue_earned', methods=['GET','POST'])
 def compare_revenue_earned():
@@ -971,15 +1146,35 @@ def compare_revenue_earned():
 		cur.execute(query_customer)
 		data_customer = cur.fetchone()
 		print(data_customer)
+
 		cur.execute(query_agent)
 		data_agent = cur.fetchone()
+
 		print(data_agent)
 
+		pie_labels = ['CUST', 'AGENT']
+
+		pie_values = [data_customer['sales'], data_agent['sales']]
+
+		if not data_customer['sales']:
+			pie_values[0] = 1
+
+		if not data_agent['sales']:
+			pie_values[1] = 1
+
+		print(pie_values)
+		# Creating plot
+		fig = plt.figure(figsize=(10, 7))
+		plt.pie(pie_values, labels=pie_labels)
+		plt.savefig('static/pie.png')
+		plt.clf()
+		plt.cla()
+		plt.close()
 
 
 
 
-	return render_template('compare_revenue_earned.html', data_agent = data_agent['sales'], data_customer = data_customer['sales'], permission=permissions)
+	return render_template('compare_revenue_earned.html', graph='static/pie.png',data_agent = data_agent['sales'], data_customer = data_customer['sales'], permission=permissions)
 
 
 
@@ -998,7 +1193,7 @@ def view_destinations():
 
 @app.route('/grant_new_permissions', methods=['GET','POST'])
 def grant_new_permissions():
-	if permissions == "Admin":
+	if permissions == "Admin" or permissions == "Both":
 
 		if request.method == 'POST':
 
@@ -1008,7 +1203,7 @@ def grant_new_permissions():
 			print(new_status)
 			print(username)
 			query = "UPDATE permission SET permission_type = '{}' WHERE username = '{}'".format(new_status,
-																											 username)
+																								 username)
 			with cnx.cursor() as cur:
 				cur.execute(query)
 
@@ -1022,7 +1217,7 @@ def grant_new_permissions():
 
 
 		with cnx.cursor() as cur:
-			query = "SELECT * FROM airline_staff left join permission on airline_staff.username = permission.username"
+			query = "SELECT * FROM airline_staff left join permission on airline_staff.username = permission.username where airline_staff.airline_name = '{}'".format(airline)
 			print(airline)
 			cur.execute(query)
 			data = cur.fetchall()

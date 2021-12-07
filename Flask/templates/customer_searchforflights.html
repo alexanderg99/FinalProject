@@ -31,7 +31,7 @@
                         <td>{{row['status']}}</td>
                         <td>{{row['airplane_id']}}</td>
 
-                        {% if permission == 'Operator' %}
+                        {% if permission == 'Operator' or permission == 'Both' %}
 
                         <td>{{row['airline_name']}}</td>
 
@@ -91,6 +91,9 @@
 
     {% if loginType == 'agent' %}
     <a class="btn btn-primary" href="{{ url_for('booking_agent_home')}}" role="button">Back Home</a>
+{% elif default %}
+<a class="btn btn-primary" href="{{ url_for('index')}}" role="button">Back Home</a>
+
     {% else %}
     <a class="btn btn-primary" href="{{ url_for('customer_home')}}" role="button">Back Home</a>
      {% endif %}

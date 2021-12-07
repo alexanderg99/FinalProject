@@ -12,7 +12,7 @@
 
 {% endif %}
 
-{% if name == 'Admin' %}
+{% if name == 'Admin' or name == 'Both' %}
 
 <a class="btn btn-primary" href="{{ url_for('create_flight')}}" role="button">Create New Flights</a>
 
@@ -30,9 +30,9 @@
 
 {% endif %}
 
-{% if name == 'Operator' %}
+{% if name == 'Operator'  or name == 'Both' %}
 
- <a class="btn btn-primary" href="{{ url_for('customer_searchforflights')}}" role="button">Change Status of Flights</a>
+ <a class="btn btn-primary" href="{{ url_for('change_status')}}" role="button">Change Status of Flights</a>
 
 {% endif %}
 
